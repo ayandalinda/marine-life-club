@@ -703,8 +703,29 @@ function deleteMsg(i){if(confirm('Delete this message?')){D.inbox.splice(i,1);sa
 // ══════════════════════════════════════════════
 //  ADMIN CONTENT SAVES
 // ══════════════════════════════════════════════
-function openAdmin(){document.getElementById('adminOverlay').classList.add('show');if(loggedIn)showPanel();}
-function closeAdmin(){document.getElementById('adminOverlay').classList.remove('show');}
+function openAdmin(){
+  console.log('🔐 Opening admin panel...');
+  try{
+    const overlay = document.getElementById('adminOverlay');
+    if(!overlay) throw new Error('adminOverlay element not found');
+    overlay.classList.add('show');
+    if(loggedIn) showPanel();
+    console.log('✅ Admin panel opened');
+  }catch(e){
+    console.error('❌ Error opening admin panel:', e);
+  }
+}
+
+function closeAdmin(){
+  console.log('🔒 Closing admin panel...');
+  try{
+    const overlay = document.getElementById('adminOverlay');
+    if(overlay) overlay.classList.remove('show');
+    console.log('✅ Admin panel closed');
+  }catch(e){
+    console.error('❌ Error closing admin panel:', e);
+  }
+}
 document.getElementById('adminOverlay').addEventListener('click',e=>{if(e.target.id==='adminOverlay')closeAdmin();});
 
 function doLogin(){
@@ -1313,11 +1334,28 @@ function saveBankDetails(){
 let currentMember = null;
 
 function openJoinModal(){
-  document.getElementById('joinOverlay').classList.add('show');
-  if(currentMember){ switchJoinTab('login'); }
+  console.log('👥 Opening join modal...');
+  try{
+    const overlay = document.getElementById('joinOverlay');
+    if(!overlay) throw new Error('joinOverlay element not found');
+    overlay.classList.add('show');
+    if(currentMember){ switchJoinTab('login'); }
+    console.log('✅ Join modal opened');
+  }catch(e){
+    console.error('❌ Error opening join modal:', e);
+  }
 }
 
-function closeJoinModal(){ document.getElementById('joinOverlay').classList.remove('show'); }
+function closeJoinModal(){ 
+  console.log('📋 Closing join modal...');
+  try{
+    const overlay = document.getElementById('joinOverlay');
+    if(overlay) overlay.classList.remove('show'); 
+    console.log('✅ Join modal closed');
+  }catch(e){
+    console.error('❌ Error closing join modal:', e);
+  }
+}
 
 document.getElementById('joinOverlay').addEventListener('click',e=>{if(e.target.id==='joinOverlay')closeJoinModal();});
 
