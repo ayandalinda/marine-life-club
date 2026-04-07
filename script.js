@@ -53,15 +53,151 @@ let loggedIn = false;
 let loginAttempts = 0;
 let loginLocked = false;
 
+// ══════════════════════════════════════════════
+//  GOOGLE SHEETS BACKEND
+// ══════════════════════════════════════════════
+const SHEETS_URL = "https://script.google.com/macros/s/AKfycbwBHnvVIaj7yEKtswKiA1Y_KzDbdWy7Eo3KgqeQ1krawvvR-UqIQqdiRD4yKuQ-Iy0a/exec";
+
+// ══════════════════════════════════════════════
+//  FIREBASE INITIALIZATION (Modular SDK)
+// ══════════════════════════════════════════════
+let firebaseApp = null;
+let firebasedb = null;
+let firebaseStorage = null;
+
+async function initializeFirebase(){
+  try{
+    const { initializeApp } = await import("https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js");
+    const { getFirestore } = await import("https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js");
+    const { getStorage } = await import("https://www.gstatic.com/firebasejs/12.11.0/firebase-storage.js");
+    
+    const firebaseConfig = {
+      apiKey: "AIzaSyD8LeX6TFURVw6AlGfanDDuk3jhUXIYEKU",
+      authDomain: "umlc-7e851.firebaseapp.com",
+      projectId: "umlc-7e851",
+      storageBucket: "umlc-7e851.firebasestorage.app",
+      messagingSenderId: "284361290170",
+      appId: "1:284361290170:web:a50665622aa4d217052d83",
+      measurementId: "G-Y3RZMXLQ9J"
+    };
+    
+    firebaseApp = initializeApp(firebaseConfig);
+    firebasedb = getFirestore(firebaseApp);
+    firebaseStorage = getStorage(firebaseApp);
+    console.log('Firebase initialized successfully');
+    return true;
+  }catch(e){
+    console.error('Firebase initialization error:', e);
+    return false;
+  }
+}
+
+async function fetchLeadersFromFirebase(){
+  if(!firebasedb){
+    console.warn('Firebase not initialized, using local data');
+    return false;
+  }
+  
+  try{
+    const { collection, getDocs, query, orderBy } = await import("https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js");
+    const { ref, getBytes } = await import("https://www.gstatic.com/firebasejs/12.11.0/firebase-storage.js");
+    
+    const q = query(collection(firebasedb, 'leaders'), orderBy('order','asc'));
+    const snapshot = await getDocs(q);
+    const leaders = [];
+    
+    for(const doc of snapshot.docs){
+      const leader = doc.data();
+      leader.id = doc.id;
+      
+      // Fetch photo URL from Storage if available
+      if(leader.photoPath){
+        try{
+          const { getDownloadURL } = await import("https://www.gstatic.com/firebasejs/12.11.0/firebase-storage.js");
+          leader.photo = await getDownloadURL(ref(firebaseStorage, leader.photoPath));
+        }catch(photoErr){
+          console.warn('Could not fetch photo for ' + leader.name);
+          leader.photo = null;
+        }
+      }
+      
+      leaders.push(leader);
+    }
+    
+    if(leaders.length>0){
+      D.leaders = leaders;
+      localStorage.setItem('umlc_leaders_cache', JSON.stringify(leaders));
+      renderLeaders();
+      console.log('Leaders fetched from Firebase:', leaders.length);
+    }
+    return true;
+  }catch(error){
+    console.error('Error fetching leaders from Firebase:', error);
+    // Try to load from cache
+    const cached = localStorage.getItem('umlc_leaders_cache');
+    if(cached){
+      D.leaders = JSON.parse(cached);
+      renderLeaders();
+      console.log('Loaded leaders from cache');
+    }
+    return false;
+  }
+}
+
+async function uploadPhotoToFirebase(file, leaderId, leaderRole){
+  if(!firebaseStorage){
+    toast('Firebase not initialized', 'err');
+    return null;
+  }
+  
+  if(file.size > 5*1024*1024){
+    toast('Photo must be under 5MB', 'err');
+    return null;
+  }
+  
+  try{
+    const { ref, uploadBytes, getDownloadURL } = await import("https://www.gstatic.com/firebasejs/12.11.0/firebase-storage.js");
+    
+    const timestamp = Date.now();
+    const ext = file.name.split('.').pop();
+    const photoPath = 'leaders/' + leaderId + '_' + timestamp + '.' + ext;
+    
+    const fileRef = ref(firebaseStorage, photoPath);
+    await uploadBytes(fileRef, file);
+    const photoUrl = await getDownloadURL(fileRef);
+    
+    console.log('Photo uploaded successfully:', photoUrl);
+    return {url: photoUrl, path: photoPath};
+  }catch(error){
+    console.error('Photo upload error:', error);
+    toast('Failed to upload photo', 'err');
+    return null;
+  }
+}
+
 function save(){
   try{
-    localStorage.setItem('umlc_v5',JSON.stringify(D));
-    localStorage.setItem('umlc_creds5',JSON.stringify(creds));
+    const stringifiedD = JSON.stringify(D);
+    const stringifiedCreds = JSON.stringify(creds);
+    localStorage.setItem('umlc_v5', stringifiedD);
+    localStorage.setItem('umlc_creds5', stringifiedCreds);
+    
+    // Sync to Google Sheets
+    if (typeof SHEETS_URL !== 'undefined') {
+      const payload = Object.assign({}, D, { _creds: creds });
+      fetch(SHEETS_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({ data: JSON.stringify(payload) })
+      }).catch(err => console.error("Sheets save error:", err));
+    }
+
     const ts = new Date().toLocaleString('en-ZA');
     const el = document.getElementById('last-saved-time');
     if(el) el.textContent = 'Last saved: '+ts;
   }catch(e){}
 }
+
 function load(){
   try{
     const d=localStorage.getItem('umlc_v5');
@@ -77,6 +213,60 @@ function load(){
     if(c) creds=JSON.parse(c);
   }catch(e){}
 }
+
+async function loadFromSheets() {
+  try {
+    const response = await fetch(SHEETS_URL);
+    const result = await response.json();
+    
+    if (result.success && result.data) {
+      const sheetsData = result.data;
+      
+      const cachedLeaders = D.leaders; // Pre-store leaders so they aren't overridden permanently
+      
+      // Parse rawState which contains settings, creds, hero, about
+      if (sheetsData.rawState && sheetsData.rawState !== "{}" && sheetsData.rawState !== "") {
+        const rawState = JSON.parse(sheetsData.rawState);
+        D = Object.assign(JSON.parse(JSON.stringify(DEFAULT)), rawState);
+        
+        if (rawState._creds) {
+          creds = rawState._creds;
+          delete D._creds;
+        }
+      }
+      
+      // Merge arrays back into D
+      if (sheetsData.members && sheetsData.members.length > 0) D.members = sheetsData.members;
+      if (sheetsData.donations && sheetsData.donations.length > 0) D.donations = sheetsData.donations;
+      if (sheetsData.inbox && sheetsData.inbox.length > 0) D.inbox = sheetsData.inbox;
+      if (sheetsData.issues && sheetsData.issues.length > 0) D.issues = sheetsData.issues;
+      if (sheetsData.events && sheetsData.events.length > 0) D.events = sheetsData.events;
+      
+      if(cachedLeaders) D.leaders = cachedLeaders;
+      
+      // Ensure programmes exist
+      if(D.programmes){
+        D.programmes = D.programmes.map((p, i) => {
+          const def = DEFAULT.programmes[i] || DEFAULT.programmes[0];
+          return Object.assign({}, def, p);
+        });
+      }
+
+      localStorage.setItem('umlc_v5', JSON.stringify(D));
+      localStorage.setItem('umlc_creds5', JSON.stringify(creds));
+      
+      // Re-render UI with Sheets data
+      render();
+      if (typeof renderIssuesAdmin === 'function' && document.getElementById('admin-view') && document.getElementById('admin-view').style.display === 'block') {
+         fillAdminForms();
+      }
+      console.log('State synchronized with Google Sheets');
+    }
+  } catch (e) {
+    console.error('Google Sheets load error:', e);
+  }
+}
+
 
 // ══════════════════════════════════════════════
 //  RENDER MAIN
@@ -198,10 +388,48 @@ function renderLeaders(){
     </div>`;
 }
 function triggerPhoto(i){document.getElementById('pi-'+i).click();}
-function handlePhoto(e,i){
+
+async function handlePhoto(e,i){
   const f=e.target.files[0];if(!f)return;
   if(f.size>5*1024*1024){toast('Photo must be under 5MB','err');return;}
-  const r=new FileReader();r.onload=ev=>{D.leaders[i].photo=ev.target.result;save();renderLeaders();toast('Photo uploaded for '+D.leaders[i].role+'!');};r.readAsDataURL(f);
+  
+  const leader = D.leaders[i];
+  
+  // Try Firebase upload first
+  if(firebaseStorage && leader.id){
+    const result = await uploadPhotoToFirebase(f, leader.id, leader.role);
+    if(result){
+      D.leaders[i].photo = result.url;
+      D.leaders[i].photoPath = result.path;
+      save();
+      renderLeaders();
+      toast('Photo uploaded for ' + D.leaders[i].role + '!');
+      
+      // Update in Firebase
+      if(firebasedb && leader.id){
+        try{
+          const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js");
+          await updateDoc(doc(firebasedb, 'leaders', leader.id), {
+            photo: result.url,
+            photoPath: result.path
+          });
+        }catch(err){
+          console.warn('Could not update Firebase:', err);
+        }
+      }
+      return;
+    }
+  }
+  
+  // Fallback: use localStorage
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    D.leaders[i].photo = ev.target.result;
+    save();
+    renderLeaders();
+    toast('Photo uploaded locally for ' + D.leaders[i].role + '!');
+  };
+  reader.readAsDataURL(f);
 }
 
 // ══════════════════════════════════════════════
@@ -1108,6 +1336,12 @@ switchTab = function(id, btn){
 //  INIT
 // ══════════════════════════════════════════════
 load();
+loadFromSheets();
+initializeFirebase().then((success) => {
+  if (success) {
+    fetchLeadersFromFirebase().catch(err => console.log('Firebase leaders fetch completed'));
+  }
+});
 render();
 updateThemeSwatches();
 spawnParticles();
