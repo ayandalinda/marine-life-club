@@ -1734,4 +1734,24 @@ document.addEventListener('DOMContentLoaded', function(){
       openAdmin();
     });
   }
+  
+  // Mobile search button
+  const btnSearchMobile = document.getElementById('btn-search-mobile');
+  if(btnSearchMobile){
+    btnSearchMobile.addEventListener('click', function(e){
+      e.preventDefault();
+      openSearch();
+      closeMenu();
+    });
+  }
+  
+  // Mobile admin button
+  const btnAdminMobile = document.getElementById('btn-admin-mobile');
+  if(btnAdminMobile){
+    btnAdminMobile.addEventListener('click', function(e){
+      e.preventDefault();
+      openAdmin();
+      closeMenu();
+    });
+  }
 });
