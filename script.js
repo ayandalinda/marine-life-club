@@ -54,6 +54,13 @@ let loginAttempts = 0;
 let loginLocked = false;
 
 // ══════════════════════════════════════════════
+//  API CONFIGURATION
+// ══════════════════════════════════════════════
+const API_BASE_URL = window.location.hostname === 'localhost' 
+  ? 'http://localhost:5000/api'
+  : 'https://marine-life-club.onrender.com/api';
+
+// ══════════════════════════════════════════════
 //  GOOGLE SHEETS BACKEND
 // ══════════════════════════════════════════════
 const SHEETS_URL = "https://script.google.com/macros/s/AKfycbwBHnvVIaj7yEKtswKiA1Y_KzDbdWy7Eo3KgqeQ1krawvvR-UqIQqdiRD4yKuQ-Iy0a/exec";
@@ -260,13 +267,82 @@ async function loadFromSheets() {
       if (typeof renderIssuesAdmin === 'function' && document.getElementById('admin-view') && document.getElementById('admin-view').style.display === 'block') {
          fillAdminForms();
       }
-      console.log('State synchronized with Google Sheets');
-    }
-  } catch (e) {
-    console.error('Google Sheets load error:', e);
+  // ══════════════════════════════════════════════
+//  BACKEND API FUNCTIONS
+// ══════════════════════════════════════════════
+async function fetchIssuesFromBackend(){
+  try{
+    const response = await fetch(API_BASE_URL + '/issues');
+    if(!response.ok) throw new Error('Failed to fetch issues');
+    const issues = await response.json();
+    // Convert backend format to local format
+    D.issues = issues.map(issue => ({
+      id: 'i' + issue.id,
+      title: issue.title,
+      desc: issue.description || '',
+      status: issue.status || 'under-review',
+      reply: issue.reply || '',
+      source: 'backend',
+      submitterName: issue.submitterName || '',
+      submitterEmail: issue.submitterEmail || '',
+      backendId: issue.id
+    }));
+    console.log('✅ Issues loaded from backend:', D.issues.length);
+    return true;
+  }catch(error){
+    console.warn('Backend issues unavailable, using local data:', error);
+    return false;
   }
 }
 
+async function fetchEventsFromBackend(){
+  try{
+    const response = await fetch(API_BASE_URL + '/events');
+    if(!response.ok) throw new Error('Failed to fetch events');
+    const events = await response.json();
+    D.events = events;
+    console.log('✅ Events loaded from backend:', D.events.length);
+    return true;
+  }catch(error){
+    console.warn('Backend events unavailable:', error);
+    return false;
+  }
+}
+
+async function fetchInquiriesFromBackend(){
+  try{
+    const response = await fetch(API_BASE_URL + '/inquiries');
+    if(!response.ok) throw new Error('Failed to fetch inquiries');
+    const inquiries = await response.json();
+    D.inbox = inquiries.map(inq => ({
+      id: 'm' + inq.id,
+      name: inq.name,
+      email: inq.email,
+      category: inq.subject || 'Inquiry',
+      message: inq.message,
+      time: inq.createdAt,
+      read: inq.status !== 'unread',
+      reply: '',
+      backendId: inq.id
+    }));
+    console.log('✅ Inquiries loaded from backend:', D.inbox.length);
+    return true;
+  }catch(error){
+    console.warn('Backend inquiries unavailable:', error);
+    return false;
+  }
+}
+
+async function initializeBackendData(){
+  console.log('🔄 Loading data from backend...');
+  await Promise.all([
+    fetchIssuesFromBackend(),
+    fetchEventsFromBackend(),
+    fetchInquiriesFromBackend()
+  ]);
+  render();
+  console.log('✅ Backend data loaded');
+}
 
 // ══════════════════════════════════════════════
 //  RENDER MAIN
@@ -481,27 +557,110 @@ function renderIssuesAdmin(){
   }).join('');
 }
 
-function addIssue(){const t=document.getElementById('ni-title').value.trim();const d2=document.getElementById('ni-desc').value.trim();const s=document.getElementById('ni-status').value;if(!t){toast('Enter a title','err');return;}D.issues.push({id:'i'+(D.nextId++),title:t,desc:d2||'',status:s,reply:'',source:'manual',submitterName:'',submitterEmail:''});save();render();renderIssuesAdmin();document.getElementById('ni-title').value='';document.getElementById('ni-desc').value='';toast('Issue added!');}
+function addIssue(){
+  const t=document.getElementById('ni-title').value.trim();
+  const d2=document.getElementById('ni-desc').value.trim();
+  const s=document.getElementById('ni-status').value;
+  if(!t){toast('Enter a title','err');return;}
+  
+  // Add to backend
+  fetch(API_BASE_URL + '/issues', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      title: t,
+      description: d2,
+      status: s
+    })
+  }).then(r => r.json()).then(result => {
+    console.log('Issue created on backend:', result);
+    // Add locally for immediate display
+    D.issues.push({id:'i'+(D.nextId++),title:t,desc:d2||'',status:s,reply:'',source:'admin',submitterName:'',submitterEmail:'',backendId:result.id});
+    save();render();renderIssuesAdmin();
+    document.getElementById('ni-title').value='';
+    document.getElementById('ni-desc').value='';
+    toast('Issue added to database!');
+  }).catch(err => {
+    console.error('Error creating issue:', err);
+    // Fallback to local
+    D.issues.push({id:'i'+(D.nextId++),title:t,desc:d2||'',status:s,reply:'',source:'admin',submitterName:'',submitterEmail:''});
+    save();render();renderIssuesAdmin();
+    document.getElementById('ni-title').value='';
+    document.getElementById('ni-desc').value='';
+    toast('Issue added locally (backend unavailable)');
+  });
+}
 
-function updateIssueStatus(i,val){D.issues[i].status=val;save();render();renderIssuesAdmin();toast('Status updated');}
+function updateIssueStatus(i,val){
+  D.issues[i].status=val;
+  // Sync to backend if backendId exists
+  if(D.issues[i].backendId){
+    fetch(API_BASE_URL + '/issues/' + D.issues[i].backendId, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: val, reply: D.issues[i].reply })
+    }).catch(err => console.log('Backend sync (status) failed:', err));
+  }
+  save();render();renderIssuesAdmin();toast('Status updated');}
 
-function updateIssueReply(i,val){D.issues[i].reply=val;save();render();}
+function updateIssueReply(i,val){
+  D.issues[i].reply=val;
+  // Sync to backend if backendId exists
+  if(D.issues[i].backendId){
+    fetch(API_BASE_URL + '/issues/' + D.issues[i].backendId, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: D.issues[i].status, reply: val })
+    }).catch(err => console.log('Backend sync (reply) failed:', err));
+  }
+  save();render();
+}
 
 function removeIssue(i){if(confirm('Remove this issue?')){D.issues.splice(i,1);save();render();renderIssuesAdmin();toast('Removed.');}}
 
 // ══════════════════════════════════════════════
 //  STUDENT VOICE / INBOX
 // ══════════════════════════════════════════════
-function handleVoice(e){
+async function handleVoice(e){
   e.preventDefault();
   const name=document.getElementById('vf-name').value.trim()||'Anonymous';
   const email=document.getElementById('vf-email').value.trim()||'';
   const cat=document.getElementById('vf-cat').value;
   const msg=document.getElementById('vf-msg').value.trim();
-  D.inbox.push({id:'m'+(D.nextId++),name,email,category:cat,message:msg,time:new Date().toISOString(),read:false,reply:''});
-  save();updateInboxBadge();
-  toast('Thank you '+name+'! Your message has been received.'+(email?' We may reply to '+email:''));
-  document.getElementById('voice-form').reset();
+  
+  // Send to backend API
+  try{
+    const response = await fetch(API_BASE_URL + '/issues', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: cat,
+        description: msg,
+        submitterName: name,
+        submitterEmail: email
+      })
+    });
+    
+    if(response.ok){
+      const result = await response.json();
+      // Also store locally for immediate display
+      D.inbox.push({id:'m'+(D.nextId++),name,email,category:cat,message:msg,time:new Date().toISOString(),read:false,reply:''});
+      save();updateInboxBadge();
+      toast('Thank you '+name+'! Your message has been received and stored in our database.'+(email?' We may reply to '+email:''));
+      document.getElementById('voice-form').reset();
+      // Refresh from backend
+      await fetchIssuesFromBackend();
+    }else{
+      toast('Error submitting form. Please try again.','err');
+    }
+  }catch(error){
+    console.error('Error submitting voice form:', error);
+    // Fallback to local storage
+    D.inbox.push({id:'m'+(D.nextId++),name,email,category:cat,message:msg,time:new Date().toISOString(),read:false,reply:''});
+    save();updateInboxBadge();
+    toast('Message saved locally (backend unavailable)');
+    document.getElementById('voice-form').reset();
+  }
 }
 
 function updateInboxBadge(){
@@ -1342,7 +1501,13 @@ initializeFirebase().then((success) => {
     fetchLeadersFromFirebase().catch(err => console.log('Firebase leaders fetch completed'));
   }
 });
-render();
+
+// Load data from backend (will merge with local data)
+load();
+initializeBackendData().catch(err => {
+  console.log('Backend not available, using local data only');
+  render();
+});
 updateThemeSwatches();
 spawnParticles();
 try{
