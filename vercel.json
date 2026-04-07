@@ -1,0 +1,11 @@
+{
+  "public": true,
+  "buildCommand": "echo 'Static site - no build required'",
+  "outputDirectory": ".",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/"
+    }
+  ]
+}

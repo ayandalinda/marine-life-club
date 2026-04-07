@@ -452,28 +452,53 @@ function renderPartners(){
 // ══════════════════════════════════════════════
 function renderLeaders(){
   const lg=document.getElementById('leaders-grid');if(!lg)return;
-  lg.innerHTML=D.leaders.map((l,i)=>`
-    <div class="leader-card">
-      <div class="photo-zone" onclick="triggerPhoto(${i})" title="Click to upload photo" role="button" aria-label="Upload photo for ${l.role}" tabindex="0" onkeydown="if(event.key==='Enter')triggerPhoto(${i})">
+  lg.innerHTML=D.leaders.map((l,i)=>{
+    // Admin-only photo uploads
+    const isAdmin = loggedIn;
+    const photoSection = isAdmin ? 
+      `<div class="photo-zone" onclick="triggerPhoto(${i})" title="Click to upload photo" role="button" aria-label="Upload photo for ${l.role}" tabindex="0" onkeydown="if(event.key==='Enter')triggerPhoto(${i})" style="cursor:pointer;">
         ${l.photo?`<img src="${l.photo}" alt="${l.name}, ${l.role}">`:`<div class="photo-placeholder"><div class="avatar-icon">👤</div><span>Click to upload</span></div>`}
         <div class="photo-upload-overlay"><span>📷 Change Photo</span></div>
         <input type="file" class="photo-input" id="pi-${i}" accept="image/*" onchange="handlePhoto(event,${i})">
-      </div>
+      </div>` :
+      `<div class="photo-zone" title="Only admins can upload photos" style="cursor:not-allowed;opacity:0.75;">
+        ${l.photo?`<img src="${l.photo}" alt="${l.name}, ${l.role}">`:`<div class="photo-placeholder"><div class="avatar-icon">👤</div><span>No photo</span></div>`}
+        <div class="photo-upload-overlay" style="opacity:0.4;"><span>🔒 Admin Only</span></div>
+      </div>`;
+    
+    return `
+    <div class="leader-card">
+      ${photoSection}
       <div class="leader-info">
         <div class="leader-role">${l.role}</div>
         <div class="leader-name">${l.name}</div>
         <p class="leader-bio">${l.bio}</p>
         <a href="mailto:${l.email}" class="leader-email" aria-label="Email ${l.name}">${l.email}</a>
       </div>
-    </div>`).join('')+`
+    </div>`;
+  }).join('')+`
     <div class="contact-row">
       <p>General inquiries about UMLC membership and activities</p>
       <a href="mailto:${D.contacts.general}" class="btn-outline" style="font-size:0.83rem;padding:0.55rem 1.3rem;" aria-label="Send general email">${D.contacts.general}</a>
     </div>`;
 }
-function triggerPhoto(i){document.getElementById('pi-'+i).click();}
+function triggerPhoto(i){
+  // Admin-only check
+  if(!loggedIn){
+    toast('⚠️ Only admins can upload photos','warn');
+    return;
+  }
+  document.getElementById('pi-'+i).click();
+}
 
 async function handlePhoto(e,i){
+  // Admin-only check
+  if(!loggedIn){
+    toast('⚠️ Only admins can upload photos','warn');
+    e.target.value='';
+    return;
+  }
+  
   const f=e.target.files[0];if(!f)return;
   if(f.size>5*1024*1024){toast('Photo must be under 5MB','err');return;}
   
@@ -1183,7 +1208,17 @@ document.querySelectorAll('.reveal').forEach(el=>ro.observe(el));
 
 function spawnParticles(){const c=document.getElementById('particles');for(let i=0;i<28;i++){const p=document.createElement('div');p.className='particle';p.style.cssText=`left:${Math.random()*100}%;bottom:${Math.random()*20}%;--dur:${6+Math.random()*10}s;--delay:${Math.random()*8}s;width:${1+Math.random()*2.5}px;height:${1+Math.random()*2.5}px;`;c.appendChild(p);}}
 
-addEventListener('click',function(e){e.preventDefault();const t=document.querySelector(this.getAttribute('href'));if(t)t.scrollIntoView({behavior:'smooth',block:'start'});});
+// Setup smooth scroll for anchor links
+document.querySelectorAll('a[href^="#"]').forEach(link => {
+  link.addEventListener('click', function(e) {
+    const href = this.getAttribute('href');
+    if(href && href !== '#') {
+      e.preventDefault();
+      const target = document.querySelector(href);
+      if(target) target.scrollIntoView({behavior:'smooth',block:'start'});
+    }
+  });
+});
 
 // ══════════════════════════════════════════════
 //  DEFAULT DATA EXTENSIONS
