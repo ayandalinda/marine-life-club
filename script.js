@@ -1202,7 +1202,17 @@ document.querySelectorAll('.reveal').forEach(el=>ro.observe(el));
 
 function spawnParticles(){const c=document.getElementById('particles');for(let i=0;i<28;i++){const p=document.createElement('div');p.className='particle';p.style.cssText=`left:${Math.random()*100}%;bottom:${Math.random()*20}%;--dur:${6+Math.random()*10}s;--delay:${Math.random()*8}s;width:${1+Math.random()*2.5}px;height:${1+Math.random()*2.5}px;`;c.appendChild(p);}}
 
-addEventListener('click',function(e){e.preventDefault();const t=document.querySelector(this.getAttribute('href'));if(t)t.scrollIntoView({behavior:'smooth',block:'start'});});
+// Setup smooth scroll for anchor links
+document.querySelectorAll('a[href^="#"]').forEach(link => {
+  link.addEventListener('click', function(e) {
+    const href = this.getAttribute('href');
+    if(href && href !== '#') {
+      e.preventDefault();
+      const target = document.querySelector(href);
+      if(target) target.scrollIntoView({behavior:'smooth',block:'start'});
+    }
+  });
+});
 
 // ══════════════════════════════════════════════
 //  DEFAULT DATA EXTENSIONS
