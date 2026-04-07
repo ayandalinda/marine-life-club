@@ -1684,6 +1684,7 @@ switchTab = function(id, btn){
   _origSwitchTab(id, btn);
   if(id==='t-members') renderMembersAdmin();
   if(id==='t-donations') renderDonationsAdmin();
+  if(id==='t-leaders') renderLeadersEdit();
 };
 
 // ══════════════════════════════════════════════
