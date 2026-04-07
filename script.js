@@ -726,7 +726,20 @@ function closeAdmin(){
     console.error('❌ Error closing admin panel:', e);
   }
 }
-document.getElementById('adminOverlay').addEventListener('click',e=>{if(e.target.id==='adminOverlay')closeAdmin();});
+
+// Safely add event listener for admin overlay
+try{
+  const adminOverlay = document.getElementById('adminOverlay');
+  if(adminOverlay){
+    adminOverlay.addEventListener('click', e=>{
+      if(e.target.id==='adminOverlay') closeAdmin();
+    });
+  }else{
+    console.warn('⚠️ adminOverlay element not found for event listener');
+  }
+}catch(e){
+  console.error('❌ Error adding admin overlay listener:', e);
+}
 
 function doLogin(){
   if(loginLocked){toast('Too many attempts. Wait 10 minutes.','err');return;}
@@ -1370,7 +1383,19 @@ function closeJoinModal(){
   }
 }
 
-document.getElementById('joinOverlay').addEventListener('click',e=>{if(e.target.id==='joinOverlay')closeJoinModal();});
+// Safely add event listener for join overlay
+try{
+  const joinOverlay = document.getElementById('joinOverlay');
+  if(joinOverlay){
+    joinOverlay.addEventListener('click', e=>{
+      if(e.target.id==='joinOverlay') closeJoinModal();
+    });
+  }else{
+    console.warn('⚠️ joinOverlay element not found for event listener');
+  }
+}catch(e){
+  console.error('❌ Error adding join overlay listener:', e);
+}
 
 function switchJoinTab(tab){
   document.getElementById('join-register-view').style.display='none';
