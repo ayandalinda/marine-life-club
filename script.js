@@ -900,6 +900,7 @@ function renderLeadersEdit(){
       <div class="mf"><label>Name</label><input type="text" id="le-name-${i}" value="${l.name}"></div>
       <div class="mf"><label>Bio</label><textarea id="le-bio-${i}" rows="2">${l.bio}</textarea></div>
       <div class="mf"><label>Email</label><input type="email" id="le-email-${i}" value="${l.email}"></div>
+      <div class="mf"><label>Photo URL (Google Drive)</label><input type="text" id="le-photo-${i}" value="${l.photo||''}" placeholder="https://lh3.googleusercontent.com/d/FILE_ID=w400-h400-c"><small style="color:var(--silver);">See GOOGLE_DRIVE_SETUP.md for instructions</small></div>
     </div>`).join('');
 }
 
@@ -909,6 +910,7 @@ function saveLeaders(){
     l.name=document.getElementById('le-name-'+i).value;
     l.bio=document.getElementById('le-bio-'+i).value;
     l.email=document.getElementById('le-email-'+i).value;
+    l.photo=document.getElementById('le-photo-'+i).value.trim()||null;
   });
   save();render();toast('Leadership updated!');
 }
