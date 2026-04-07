@@ -1698,7 +1698,8 @@ window.addEventListener('load',function(){
 // ═══════════════════════════════════════════════════════════
 //  BUTTON EVENT LISTENERS - FIX FOR NAV BUTTONS
 // ═══════════════════════════════════════════════════════════
-document.addEventListener('DOMContentLoaded', function(){
+// Initialize button click handlers (DOM already loaded when script.js runs)
+(function(){
   // Search button
   const btnSearch = document.getElementById('btn-search');
   if(btnSearch){
@@ -1754,4 +1755,4 @@ document.addEventListener('DOMContentLoaded', function(){
       closeMenu();
     });
   }
-});
+})();
