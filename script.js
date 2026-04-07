@@ -1220,7 +1220,20 @@ function closeDonate(){
     console.error('❌ Error closing donate modal:', e);
   }
 }
-document.getElementById('donateOverlay').addEventListener('click', e=>{ if(e.target.id==='donateOverlay') closeDonate(); });
+
+// Safely add event listener for donate overlay
+try{
+  const donateOverlay = document.getElementById('donateOverlay');
+  if(donateOverlay){
+    donateOverlay.addEventListener('click', e=>{ 
+      if(e.target.id==='donateOverlay') closeDonate(); 
+    });
+  }else{
+    console.warn('⚠️ donateOverlay element not found for event listener');
+  }
+}catch(e){
+  console.error('❌ Error adding donate overlay listener:', e);
+}
 
 function setDonateAmt(amt){
   currentDonateAmt = amt;
