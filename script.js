@@ -1694,3 +1694,44 @@ try{
 window.addEventListener('load',function(){
   initGoogleTranslate();
 });
+
+// ═══════════════════════════════════════════════════════════
+//  BUTTON EVENT LISTENERS - FIX FOR NAV BUTTONS
+// ═══════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', function(){
+  // Search button
+  const btnSearch = document.getElementById('btn-search');
+  if(btnSearch){
+    btnSearch.addEventListener('click', function(e){
+      e.preventDefault();
+      openSearch();
+    });
+  }
+  
+  // Donate button
+  const btnDonate = document.getElementById('btn-donate');
+  if(btnDonate){
+    btnDonate.addEventListener('click', function(e){
+      e.preventDefault();
+      openDonate();
+    });
+  }
+  
+  // Join button
+  const btnJoin = document.getElementById('btn-join');
+  if(btnJoin){
+    btnJoin.addEventListener('click', function(e){
+      e.preventDefault();
+      openJoinModal();
+    });
+  }
+  
+  // Admin button
+  const btnAdmin = document.getElementById('btn-admin');
+  if(btnAdmin){
+    btnAdmin.addEventListener('click', function(e){
+      e.preventDefault();
+      openAdmin();
+    });
+  }
+});
