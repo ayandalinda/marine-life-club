@@ -31,7 +31,8 @@ For each image, follow these steps:
    - Example: `https://drive.google.com/file/d/1abc123XYZ/view?usp=sharing`
    - The FILE_ID is: `1abc123XYZ`
 4. Create a direct image URL using this format:
-   ```
+   ``
+   new : https://lh3.googleusercontent.com/d/FILE_ID=1Im7TxiBFIYLv-fqL3xag4Ze4PGbDNjKv
    https://lh3.googleusercontent.com/d/FILE_ID=w400-h400-c
    ```
    Replace `FILE_ID` with the actual ID. Example:
@@ -45,7 +46,7 @@ For each image, follow these steps:
 3. Copy the share link
 4. Transform it to a direct image URL:
    - Original: `https://drive.google.com/file/d/1abc123XYZ/view?usp=sharing`
-   - Convert to: `https://lh3.googleusercontent.com/d/1abc123XYZ=w400-h400-c`
+   - Convert to: `https://lh3.googleusercontent.com/d/1Im7TxiBFIYLv-fqL3xag4Ze4PGbDNjKv
 
 ## Step 4: Add URLs to UMLC Website
 
