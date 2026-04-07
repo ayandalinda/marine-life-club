@@ -862,7 +862,43 @@ function saveSocials(){D.socials.instagram=document.getElementById('e-instagram'
 
 function saveContacts(){D.contacts.general=document.getElementById('s-gen-email').value;D.contacts.partnerships=document.getElementById('s-part-email').value;D.contacts.president=document.getElementById('s-pres-email').value;save();render();toast('Contacts updated!');}
 
-function addEvent(){const t=document.getElementById('e-ev-title').value.trim(),d=document.getElementById('e-ev-date').value,desc=document.getElementById('e-ev-desc').value.trim();if(!t||!d||!desc){toast('Fill all event fields','err');return;}D.events.push({title:t,date:d,description:desc});D.events.sort((a,b)=>new Date(a.date)-new Date(b.date));save();render();renderEventsAdmin();document.getElementById('e-ev-title').value='';document.getElementById('e-ev-date').value='';document.getElementById('e-ev-desc').value='';toast('Event added!');}
+function addEvent(){
+  const t=document.getElementById('e-ev-title').value.trim(),
+        d=document.getElementById('e-ev-date').value,
+        desc=document.getElementById('e-ev-desc').value.trim();
+  if(!t||!d||!desc){toast('Fill all event fields','err');return;}
+  
+  // Send to backend
+  fetch(API_BASE_URL + '/events', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      title: t,
+      date: d,
+      description: desc,
+      category: 'general'
+    })
+  }).then(r => r.json()).then(result => {
+    console.log('Event created on backend:', result);
+    D.events.push({title:t,date:d,description:desc,backendId:result.id});
+    D.events.sort((a,b)=>new Date(a.date)-new Date(b.date));
+    save();render();renderEventsAdmin();
+    document.getElementById('e-ev-title').value='';
+    document.getElementById('e-ev-date').value='';
+    document.getElementById('e-ev-desc').value='';
+    toast('Event added to database!');
+  }).catch(err => {
+    console.error('Error creating event:', err);
+    // Fallback to local
+    D.events.push({title:t,date:d,description:desc});
+    D.events.sort((a,b)=>new Date(a.date)-new Date(b.date));
+    save();render();renderEventsAdmin();
+    document.getElementById('e-ev-title').value='';
+    document.getElementById('e-ev-date').value='';
+    document.getElementById('e-ev-desc').value='';
+    toast('Event added locally (backend unavailable)');
+  });
+}
 
 function renderEventsAdmin(){const el=document.getElementById('events-edit-list');if(!el)return;if(D.events.length===0){el.innerHTML='<p style="color:var(--ghost);font-size:0.85rem;">No events yet.</p>';return;}el.innerHTML=D.events.map((ev,i)=>`<div class="eitem"><div class="eitem-row"><div><strong style="font-size:0.88rem;">${ev.title}</strong><br><span style="font-size:0.75rem;color:var(--ghost);">${new Date(ev.date).toLocaleDateString()}</span></div><button class="del-btn" onclick="delEvent(${i})">Delete</button></div></div>`).join('');}
 
