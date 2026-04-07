@@ -335,13 +335,15 @@ async function fetchInquiriesFromBackend(){
 
 async function initializeBackendData(){
   console.log('🔄 Loading data from backend...');
-  await Promise.all([
+  const results = await Promise.all([
     fetchIssuesFromBackend(),
     fetchEventsFromBackend(),
     fetchInquiriesFromBackend()
   ]);
   render();
-  console.log('✅ Backend data loaded');
+  updateInboxBadge();
+  console.log('✅ Backend data initialization complete');
+  return true;
 }
 
 // ══════════════════════════════════════════════
@@ -1540,10 +1542,29 @@ initializeFirebase().then((success) => {
 
 // Load data from backend (will merge with local data)
 load();
-initializeBackendData().catch(err => {
-  console.log('Backend not available, using local data only');
-  render();
+
+// Initialize page
+window.addEventListener('DOMContentLoaded', async function(){
+  initGoogleTranslate();
+  try{
+    await initializeBackendData();
+  }catch(err){
+    console.log('Backend not available, using local data only', err);
+    render();
+  }
 });
+
+// Fallback initialization if DOMContentLoaded already fired
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', function(){});
+}else{
+  initGoogleTranslate();
+  initializeBackendData().catch(err => {
+    console.log('Backend not available, using local data only');
+    render();
+  });
+}
+
 updateThemeSwatches();
 spawnParticles();
 try{
