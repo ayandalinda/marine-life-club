@@ -1074,9 +1074,36 @@ const SEARCHINDEX=[
   {title:'Contact Us',section:'#leadership',desc:'General email and leadership contacts'},
 ];
 
-function openSearch(){document.getElementById('searchWrap').classList.add('show');document.getElementById('searchInput').focus();}
+function openSearch(){
+  console.log('🔎 Opening search...');
+  try{
+    const wrap = document.getElementById('searchWrap');
+    const input = document.getElementById('searchInput');
+    if(!wrap) throw new Error('searchWrap element not found');
+    if(!input) throw new Error('searchInput element not found');
+    wrap.classList.add('show');
+    input.focus();
+    console.log('✅ Search opened');
+  }catch(e){
+    console.error('❌ Error opening search:', e);
+  }
+}
 
-function closeSearch(){document.getElementById('searchWrap').classList.remove('show');document.getElementById('searchInput').value='';document.getElementById('searchResults').innerHTML='';}
+function closeSearch(){
+  console.log('🔍 Closing search...');
+  try{
+    const wrap = document.getElementById('searchWrap');
+    const input = document.getElementById('searchInput');
+    const results = document.getElementById('searchResults');
+    if(!wrap) throw new Error('searchWrap element not found');
+    wrap.classList.remove('show');
+    if(input) input.value='';
+    if(results) results.innerHTML='';
+    console.log('✅ Search closed');
+  }catch(e){
+    console.error('❌ Error closing search:', e);
+  }
+}
 
 function doSearch(q){
   const el=document.getElementById('searchResults');if(!q.trim()){el.innerHTML='';return;}
@@ -1145,16 +1172,33 @@ let currentDonateAmt = 0;
 let _resetCode = null;
 
 function openDonate(){
-  const bd = D.bankDetails||{};
-  const bel = document.getElementById('d-bank'); if(bel) bel.textContent = bd.bank||'FNB (First National Bank)';
-  const an = document.getElementById('d-accname'); if(an) an.textContent = bd.accName||'UKZN Marine Life Club';
-  const ac = document.getElementById('d-accnum'); if(ac) ac.textContent = bd.accNum||'Contact admin to set account number';
-  const br = document.getElementById('d-branch'); if(br) br.textContent = bd.branch||'250655';
-  const de = document.getElementById('d-email-lnk'); if(de){de.href='mailto:'+D.contacts.general;de.textContent=D.contacts.general;}
-  document.getElementById('donateOverlay').classList.add('show');
+  console.log('💰 Opening donate modal...');
+  try{
+    const bd = D.bankDetails||{};
+    const bel = document.getElementById('d-bank'); if(bel) bel.textContent = bd.bank||'FNB (First National Bank)';
+    const an = document.getElementById('d-accname'); if(an) an.textContent = bd.accName||'UKZN Marine Life Club';
+    const ac = document.getElementById('d-accnum'); if(ac) ac.textContent = bd.accNum||'Contact admin to set account number';
+    const br = document.getElementById('d-branch'); if(br) br.textContent = bd.branch||'250655';
+    const de = document.getElementById('d-email-lnk'); if(de){de.href='mailto:'+D.contacts.general;de.textContent=D.contacts.general;}
+    const overlay = document.getElementById('donateOverlay');
+    if(!overlay) throw new Error('donateOverlay element not found');
+    overlay.classList.add('show');
+    console.log('✅ Donate modal opened');
+  }catch(e){
+    console.error('❌ Error opening donate modal:', e);
+  }
 }
 
-function closeDonate(){ document.getElementById('donateOverlay').classList.remove('show'); }
+function closeDonate(){ 
+  console.log('💳 Closing donate modal...');
+  try{
+    const overlay = document.getElementById('donateOverlay');
+    if(overlay) overlay.classList.remove('show'); 
+    console.log('✅ Donate modal closed');
+  }catch(e){
+    console.error('❌ Error closing donate modal:', e);
+  }
+}
 document.getElementById('donateOverlay').addEventListener('click', e=>{ if(e.target.id==='donateOverlay') closeDonate(); });
 
 function setDonateAmt(amt){
