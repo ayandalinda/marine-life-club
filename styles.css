@@ -11,7 +11,7 @@
 [data-theme="slate"]{--deep:#0d0d14;--abyss:#151522;--mid:#1e1e2e;--surface:#2a2a40;--biolum:#a78bfa;--biolum-dim:rgba(167,139,250,0.15);--pearl:#ede9fe;--mist:rgba(237,233,254,0.6);--ghost:rgba(237,233,254,0.25);}
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
 html{scroll-behavior:smooth;}
-body{font-family:'DM Sans',sans-serif;background:var(--deep);color:var(--pearl);overflow-x:hidden;transition:background 0.4s,color 0.4s;}
+body{font-family:'DM Sans',sans-serif;background:var(--deep);color:var(--pearl);overflow-x:hidden;overflow-y:auto;min-height:100vh;transition:background 0.4s,color 0.4s;}
 ::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-track{background:var(--abyss);}::-webkit-scrollbar-thumb{background:var(--biolum);border-radius:2px;}
 
 /* SEARCH BAR */
