@@ -267,7 +267,13 @@ async function loadFromSheets() {
       if (typeof renderIssuesAdmin === 'function' && document.getElementById('admin-view') && document.getElementById('admin-view').style.display === 'block') {
          fillAdminForms();
       }
-  // ══════════════════════════════════════════════
+    }
+  } catch (error) {
+    console.error("Error loading from sheets:", error);
+  }
+}
+
+// ══════════════════════════════════════════════
 //  BACKEND API FUNCTIONS
 // ══════════════════════════════════════════════
 async function fetchIssuesFromBackend(){
