@@ -501,7 +501,7 @@ function addIssue(){
   // Add to backend
   fetch(API_BASE_URL + '/issues', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getAuthHeaders(),
     body: JSON.stringify({
       title: t,
       description: d2,
@@ -532,7 +532,7 @@ function updateIssueStatus(i,val){
   if(D.issues[i].backendId){
     fetch(API_BASE_URL + '/issues/' + D.issues[i].backendId, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify({ status: val, reply: D.issues[i].reply })
     }).catch(err => console.log('Backend sync (status) failed:', err));
   }
@@ -544,7 +544,7 @@ function updateIssueReply(i,val){
   if(D.issues[i].backendId){
     fetch(API_BASE_URL + '/issues/' + D.issues[i].backendId, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify({ status: D.issues[i].status, reply: val })
     }).catch(err => console.log('Backend sync (reply) failed:', err));
   }
@@ -553,7 +553,7 @@ function updateIssueReply(i,val){
 
 function removeIssue(i){
   if(confirm('Remove this issue?')){
-    if(D.issues[i].backendId) fetch(API_BASE_URL + '/issues/' + D.issues[i].backendId, { method: 'DELETE' }).catch(e=>console.error(e));
+    if(D.issues[i].backendId) fetch(API_BASE_URL + '/issues/' + D.issues[i].backendId, { method: 'DELETE', headers: getAuthHeaders() }).catch(e=>console.error(e));
     D.issues.splice(i,1);save();render();renderIssuesAdmin();toast('Removed.');
   }
 }
@@ -632,13 +632,13 @@ function renderInbox(){
 function sendReply(i,id){
   const inp=document.getElementById('ri-'+id);if(!inp)return;const txt=inp.value.trim();if(!txt){toast('Enter a reply','err');return;}
   D.inbox[i].reply=txt;D.inbox[i].read=true;
-  if(D.inbox[i].backendId) fetch(API_BASE_URL + '/inquiries/' + D.inbox[i].backendId, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({status: 'read'}) }).catch(e=>console.error(e));
+  if(D.inbox[i].backendId) fetch(API_BASE_URL + '/inquiries/' + D.inbox[i].backendId, { method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify({status: 'read'}) }).catch(e=>console.error(e));
   save();renderInbox();updateInboxBadge();toast(D.inbox[i].email?'Reply noted! Email: '+D.inbox[i].email:'Reply noted (no email provided).');
 }
 
 function markRead(i){
   D.inbox[i].read=true;
-  if(D.inbox[i].backendId) fetch(API_BASE_URL + '/inquiries/' + D.inbox[i].backendId, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({status: 'read'}) }).catch(e=>console.error(e));
+  if(D.inbox[i].backendId) fetch(API_BASE_URL + '/inquiries/' + D.inbox[i].backendId, { method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify({status: 'read'}) }).catch(e=>console.error(e));
   save();renderInbox();updateInboxBadge();
 }
 
@@ -646,7 +646,7 @@ function promoteToIssue(i){
   const m=D.inbox[i];
   fetch(API_BASE_URL + '/issues', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getAuthHeaders(),
     body: JSON.stringify({
       title: m.category + ': ' + m.message.substring(0, 55) + '...',
       description: 'Submitted by: ' + m.name + (m.email?' ('+m.email+')':''),
@@ -656,14 +656,14 @@ function promoteToIssue(i){
   }).then(r=>r.json()).then(res=>{
     D.issues.push({...m, id:'i'+(D.nextId++), status:'under-review', backendId: res.id});
     D.inbox[i].read=true;
-    if(m.backendId) fetch(API_BASE_URL + '/inquiries/' + m.backendId, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({status: 'read'}) }).catch(e=>console.error(e));
+    if(m.backendId) fetch(API_BASE_URL + '/inquiries/' + m.backendId, { method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify({status: 'read'}) }).catch(e=>console.error(e));
     save();render();renderIssuesAdmin();renderInbox();updateInboxBadge();toast('Added to Issues Board!');
   }).catch(e=>console.error(e));
 }
 
 function deleteMsg(i){
   if(confirm('Delete this message?')){
-    if(D.inbox[i].backendId) fetch(API_BASE_URL + '/inquiries/' + D.inbox[i].backendId, { method: 'DELETE' }).catch(e=>console.error(e));
+    if(D.inbox[i].backendId) fetch(API_BASE_URL + '/inquiries/' + D.inbox[i].backendId, { method: 'DELETE', headers: getAuthHeaders() }).catch(e=>console.error(e));
     D.inbox.splice(i,1);save();renderInbox();updateInboxBadge();toast('Deleted.');
   }
 }
@@ -751,19 +751,43 @@ try{
   console.error('❌ Error adding admin overlay listener:', e);
 }
 
-function doLogin(){
+async function doLogin(){
   if(loginLocked){toast('Too many attempts. Wait 10 minutes.','err');return;}
   const u=document.getElementById('a-user').value.trim(),p=document.getElementById('a-pass').value;
-  if(u===creds.u&&p===creds.p){
-    if(D.settings.twoFA&&D.settings.twoFApin){
+  
+  if(D.settings.twoFA&&D.settings.twoFApin) {
+    if(u===creds.u&&p===creds.p) {
       const pin=prompt('Enter your 6-digit admin PIN:');
       if(pin!==String(D.settings.twoFApin)){toast('Incorrect PIN','err');return;}
     }
-    loggedIn=true;loginAttempts=0;showPanel();document.getElementById('login-err').style.display='none';
-  }else{
-    loginAttempts++;
-    document.getElementById('login-err').style.display='block';
-    if(D.settings.loginLimit&&loginAttempts>=5){loginLocked=true;toast('Login locked for 10 minutes.','err');setTimeout(()=>{loginLocked=false;loginAttempts=0;},600000);}
+  }
+
+  try {
+    const response = await fetch(API_BASE_URL + '/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: u, password: p })
+    });
+    
+    if(response.ok) {
+      const { token } = await response.json();
+      sessionStorage.setItem('adminToken', token);
+      loggedIn=true;loginAttempts=0;showPanel();document.getElementById('login-err').style.display='none';
+      toast('Logged in successfully!');
+    } else {
+      loginAttempts++;
+      document.getElementById('login-err').style.display='block';
+      if(D.settings.loginLimit&&loginAttempts>=5){loginLocked=true;toast('Login locked for 10 minutes.','err');setTimeout(()=>{loginLocked=false;loginAttempts=0;},600000);}
+    }
+  } catch(e) {
+    console.error('Login error', e);
+    // Fallback if backend is down
+    if(u===creds.u&&p===creds.p){
+      loggedIn=true;loginAttempts=0;showPanel();document.getElementById('login-err').style.display='none';
+    } else {
+      loginAttempts++;
+      document.getElementById('login-err').style.display='block';
+    }
   }
 }
 
@@ -918,7 +942,7 @@ function addEvent(){
   // Send to backend
   fetch(API_BASE_URL + '/events', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getAuthHeaders(),
     body: JSON.stringify({
       title: t,
       date: d,
@@ -951,7 +975,7 @@ function renderEventsAdmin(){const el=document.getElementById('events-edit-list'
 
 function delEvent(i){
   if(confirm('Delete?')){
-    if(D.events[i].backendId) fetch(API_BASE_URL + '/events/' + D.events[i].backendId, { method: 'DELETE' }).catch(e=>console.error(e));
+    if(D.events[i].backendId) fetch(API_BASE_URL + '/events/' + D.events[i].backendId, { method: 'DELETE', headers: getAuthHeaders() }).catch(e=>console.error(e));
     D.events.splice(i,1);save();render();renderEventsAdmin();toast('Event deleted.');
   }
 }
