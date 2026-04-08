@@ -3,6 +3,9 @@ const sqlite3 = require('sqlite3').verbose();
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const path = require('path');
+const jwt = require('jsonwebtoken');
+
+const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-marine-key';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -88,6 +91,30 @@ function initializeDatabase() {
 // API ENDPOINTS
 // ═══════════════════════════════════════════
 
+// Auth middleware
+function authenticateToken(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  if (token == null) return res.sendStatus(401);
+
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err) return res.sendStatus(403);
+    req.user = user;
+    next();
+  });
+}
+
+// POST login
+app.post('/api/login', (req, res) => {
+  const { username, password } = req.body;
+  if (username === 'admin' && password === 'marine2026') {
+    const token = jwt.sign({ username }, JWT_SECRET, { expiresIn: '2h' });
+    res.json({ token });
+  } else {
+    res.status(401).json({ error: 'Invalid credentials' });
+  }
+});
+
 // GET all events
 app.get('/api/events', (req, res) => {
   db.all('SELECT * FROM events ORDER BY date DESC', [], (err, rows) => {
@@ -100,7 +127,7 @@ app.get('/api/events', (req, res) => {
 });
 
 // POST new event
-app.post('/api/events', (req, res) => {
+app.post('/api/events', authenticateToken, (req, res) => {
   const { title, description, date, location, category } = req.body;
   db.run(
     'INSERT INTO events (title, description, date, location, category) VALUES (?, ?, ?, ?, ?)',
@@ -116,7 +143,7 @@ app.post('/api/events', (req, res) => {
 });
 
 // DELETE event
-app.delete('/api/events/:id', (req, res) => {
+app.delete('/api/events/:id', authenticateToken, (req, res) => {
   db.run('DELETE FROM events WHERE id = ?', [req.params.id], function(err) {
     if (err) {
       res.status(500).json({ error: err.message });
@@ -154,7 +181,7 @@ app.post('/api/issues', (req, res) => {
 });
 
 // UPDATE issue status and reply
-app.put('/api/issues/:id', (req, res) => {
+app.put('/api/issues/:id', authenticateToken, (req, res) => {
   const { status, reply } = req.body;
   db.run(
     'UPDATE issues SET status = ?, reply = ? WHERE id = ?',
@@ -170,7 +197,7 @@ app.put('/api/issues/:id', (req, res) => {
 });
 
 // DELETE issue
-app.delete('/api/issues/:id', (req, res) => {
+app.delete('/api/issues/:id', authenticateToken, (req, res) => {
   db.run('DELETE FROM issues WHERE id = ?', [req.params.id], function(err) {
     if (err) {
       res.status(500).json({ error: err.message });
@@ -208,7 +235,7 @@ app.post('/api/inquiries', (req, res) => {
 });
 
 // UPDATE inquiry status
-app.put('/api/inquiries/:id', (req, res) => {
+app.put('/api/inquiries/:id', authenticateToken, (req, res) => {
   const { status } = req.body;
   db.run(
     'UPDATE inquiries SET status = ? WHERE id = ?',
@@ -224,7 +251,7 @@ app.put('/api/inquiries/:id', (req, res) => {
 });
 
 // DELETE inquiry
-app.delete('/api/inquiries/:id', (req, res) => {
+app.delete('/api/inquiries/:id', authenticateToken, (req, res) => {
   db.run('DELETE FROM inquiries WHERE id = ?', [req.params.id], function(err) {
     if (err) {
       res.status(500).json({ error: err.message });
@@ -246,7 +273,7 @@ app.get('/api/leadership', (req, res) => {
 });
 
 // UPDATE leadership
-app.post('/api/leadership', (req, res) => {
+app.post('/api/leadership', authenticateToken, (req, res) => {
   const { role, name, bio, email, photo } = req.body;
   db.run(
     'INSERT OR REPLACE INTO leadership (role, name, bio, email, photo) VALUES (?, ?, ?, ?, ?)',

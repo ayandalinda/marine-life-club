@@ -60,6 +60,14 @@ const API_BASE_URL = window.location.hostname === 'localhost'
   ? 'http://localhost:5000/api'
   : 'https://marine-life-club.onrender.com/api';
 
+function getAuthHeaders() {
+  const token = sessionStorage.getItem('adminToken');
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { 'Authorization': 'Bearer ' + token } : {})
+  };
+}
+
 // ══════════════════════════════════════════════
 //  GOOGLE SHEETS BACKEND
 // ══════════════════════════════════════════════
@@ -88,7 +96,7 @@ async function updateLeadershipMember(memberData) {
   try {
     const response = await fetch(API_BASE_URL + '/leadership', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify(memberData)
     });
     if (!response.ok) throw new Error('Failed to update leadership');
@@ -663,6 +671,11 @@ function deleteMsg(i){
 function openContactModal() {
   const overlay = document.getElementById('contactOverlay');
   if(overlay) overlay.classList.add('show');
+}
+
+function getAuthHeaders() {
+  const token = sessionStorage.getItem('adminToken');
+  return token ? { 'Authorization': 'Bearer ' + token } : {};
 }
 
 async function submitContactForm() {
