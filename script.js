@@ -48,7 +48,7 @@ const DEFAULT = {
 };
 
 let D = JSON.parse(JSON.stringify(DEFAULT));
-let creds = {u:"president",p:"umlc2025"};
+let creds = {u:"admin",p:"marine2026"};
 let loggedIn = false;
 let loginAttempts = 0;
 let loginLocked = false;
