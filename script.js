@@ -66,121 +66,40 @@ const API_BASE_URL = window.location.hostname === 'localhost'
 const SHEETS_URL = "https://script.google.com/macros/s/AKfycbwBHnvVIaj7yEKtswKiA1Y_KzDbdWy7Eo3KgqeQ1krawvvR-UqIQqdiRD4yKuQ-Iy0a/exec";
 
 // ══════════════════════════════════════════════
-//  FIREBASE INITIALIZATION (Modular SDK)
+//  LEADERSHIP BACKEND INTEGRATION
 // ══════════════════════════════════════════════
-let firebaseApp = null;
-let firebasedb = null;
-let firebaseStorage = null;
-
-async function initializeFirebase(){
-  try{
-    const { initializeApp } = await import("https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js");
-    const { getFirestore } = await import("https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js");
-    const { getStorage } = await import("https://www.gstatic.com/firebasejs/12.11.0/firebase-storage.js");
-    
-    const firebaseConfig = {
-      apiKey: "AIzaSyD8LeX6TFURVw6AlGfanDDuk3jhUXIYEKU",
-      authDomain: "umlc-7e851.firebaseapp.com",
-      projectId: "umlc-7e851",
-      storageBucket: "umlc-7e851.firebasestorage.app",
-      messagingSenderId: "284361290170",
-      appId: "1:284361290170:web:a50665622aa4d217052d83",
-      measurementId: "G-Y3RZMXLQ9J"
-    };
-    
-    firebaseApp = initializeApp(firebaseConfig);
-    firebasedb = getFirestore(firebaseApp);
-    firebaseStorage = getStorage(firebaseApp);
-    console.log('Firebase initialized successfully');
-    return true;
-  }catch(e){
-    console.error('Firebase initialization error:', e);
-    return false;
+async function fetchLeadershipFromBackend() {
+  try {
+    const response = await fetch(API_BASE_URL + '/leadership');
+    if (!response.ok) throw new Error('Failed to fetch leadership');
+    const leaders = await response.json();
+    if (leaders.length > 0) {
+      D.leaders = leaders.map((l, i) => Object.assign(D.leaders[i] || {}, l));
+      console.log('✅ Leadership loaded from backend:', D.leaders.length);
+    }
+    return D.leaders;
+  } catch (error) {
+    console.warn('Backend leadership unavailable, using local data:', error);
+    return D.leaders;
   }
 }
 
-async function fetchLeadersFromFirebase(){
-  if(!firebasedb){
-    console.warn('Firebase not initialized, using local data');
-    return false;
-  }
-  
-  try{
-    const { collection, getDocs, query, orderBy } = await import("https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js");
-    const { ref, getBytes } = await import("https://www.gstatic.com/firebasejs/12.11.0/firebase-storage.js");
-    
-    const q = query(collection(firebasedb, 'leaders'), orderBy('order','asc'));
-    const snapshot = await getDocs(q);
-    const leaders = [];
-    
-    for(const doc of snapshot.docs){
-      const leader = doc.data();
-      leader.id = doc.id;
-      
-      // Fetch photo URL from Storage if available
-      if(leader.photoPath){
-        try{
-          const { getDownloadURL } = await import("https://www.gstatic.com/firebasejs/12.11.0/firebase-storage.js");
-          leader.photo = await getDownloadURL(ref(firebaseStorage, leader.photoPath));
-        }catch(photoErr){
-          console.warn('Could not fetch photo for ' + leader.name);
-          leader.photo = null;
-        }
-      }
-      
-      leaders.push(leader);
-    }
-    
-    if(leaders.length>0){
-      D.leaders = leaders;
-      localStorage.setItem('umlc_leaders_cache', JSON.stringify(leaders));
-      renderLeaders();
-      console.log('Leaders fetched from Firebase:', leaders.length);
-    }
-    return true;
-  }catch(error){
-    console.error('Error fetching leaders from Firebase:', error);
-    // Try to load from cache
-    const cached = localStorage.getItem('umlc_leaders_cache');
-    if(cached){
-      D.leaders = JSON.parse(cached);
-      renderLeaders();
-      console.log('Loaded leaders from cache');
-    }
-    return false;
+async function updateLeadershipMember(memberData) {
+  try {
+    const response = await fetch(API_BASE_URL + '/leadership', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(memberData)
+    });
+    if (!response.ok) throw new Error('Failed to update leadership');
+    const result = await response.json();
+    console.log('Leadership updated:', result);
+    return result;
+  } catch (error) {
+    console.error('Error updating leadership:', error);
   }
 }
 
-async function uploadPhotoToFirebase(file, leaderId, leaderRole){
-  if(!firebaseStorage){
-    toast('Firebase not initialized', 'err');
-    return null;
-  }
-  
-  if(file.size > 5*1024*1024){
-    toast('Photo must be under 5MB', 'err');
-    return null;
-  }
-  
-  try{
-    const { ref, uploadBytes, getDownloadURL } = await import("https://www.gstatic.com/firebasejs/12.11.0/firebase-storage.js");
-    
-    const timestamp = Date.now();
-    const ext = file.name.split('.').pop();
-    const photoPath = 'leaders/' + leaderId + '_' + timestamp + '.' + ext;
-    
-    const fileRef = ref(firebaseStorage, photoPath);
-    await uploadBytes(fileRef, file);
-    const photoUrl = await getDownloadURL(fileRef);
-    
-    console.log('Photo uploaded successfully:', photoUrl);
-    return {url: photoUrl, path: photoPath};
-  }catch(error){
-    console.error('Photo upload error:', error);
-    toast('Failed to upload photo', 'err');
-    return null;
-  }
-}
 
 function save(){
   try{
@@ -344,7 +263,8 @@ async function initializeBackendData(){
   const results = await Promise.all([
     fetchIssuesFromBackend(),
     fetchEventsFromBackend(),
-    fetchInquiriesFromBackend()
+    fetchInquiriesFromBackend(),
+    fetchLeadershipFromBackend()
   ]);
   render();
   updateInboxBadge();
@@ -502,41 +422,15 @@ async function handlePhoto(e,i){
   const f=e.target.files[0];if(!f)return;
   if(f.size>5*1024*1024){toast('Photo must be under 5MB','err');return;}
   
-  const leader = D.leaders[i];
-  
-  // Try Firebase upload first
-  if(firebaseStorage && leader.id){
-    const result = await uploadPhotoToFirebase(f, leader.id, leader.role);
-    if(result){
-      D.leaders[i].photo = result.url;
-      D.leaders[i].photoPath = result.path;
-      save();
-      renderLeaders();
-      toast('Photo uploaded for ' + D.leaders[i].role + '!');
-      
-      // Update in Firebase
-      if(firebasedb && leader.id){
-        try{
-          const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js");
-          await updateDoc(doc(firebasedb, 'leaders', leader.id), {
-            photo: result.url,
-            photoPath: result.path
-          });
-        }catch(err){
-          console.warn('Could not update Firebase:', err);
-        }
-      }
-      return;
-    }
-  }
-  
-  // Fallback: use localStorage
   const reader = new FileReader();
-  reader.onload = (ev) => {
+  reader.onload = async (ev) => {
     D.leaders[i].photo = ev.target.result;
     save();
     renderLeaders();
-    toast('Photo uploaded locally for ' + D.leaders[i].role + '!');
+    toast('Photo uploaded for ' + D.leaders[i].role + '!');
+    
+    // Sync to backend
+    await updateLeadershipMember(D.leaders[i]);
   };
   reader.readAsDataURL(f);
 }
@@ -915,6 +809,7 @@ function saveLeaders(){
     l.name=document.getElementById('le-name-'+i).value;
     l.bio=document.getElementById('le-bio-'+i).value;
     l.email=document.getElementById('le-email-'+i).value;
+    updateLeadershipMember(l);
   });
   save();render();toast('Leadership updated!');
 }
@@ -1695,11 +1590,6 @@ switchTab = function(id, btn){
 // ══════════════════════════════════════════════
 load();
 loadFromSheets();
-initializeFirebase().then((success) => {
-  if (success) {
-    fetchLeadersFromFirebase().catch(err => console.log('Firebase leaders fetch completed'));
-  }
-});
 
 // Load data from backend (will merge with local data)
 load();
