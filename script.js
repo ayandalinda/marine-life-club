@@ -12,7 +12,7 @@ const DEFAULT = {
     {id:"p5",num:"05",icon:"📅",title:"Events Coordination",tagline:"Building community",summary:"Organising academic, social, and professional events that bring the UMLC community together throughout the year.",description:"The Events Coordinator oversees all UMLC events — from intimate academic sessions to large-scale conservation drives and social gatherings. They work closely with all executive members to ensure every event runs smoothly, is well-attended, and creates lasting impact for members.",activities:["Semester kickoff and orientation events for new members","Marine Biology Quiz Nights and social mixers","Annual UMLC Formal Dinner and Awards Evening","Coordination with UKZN SRC for campus-wide events","Logistics for field trips, workshops, and site visits","Post-event feedback collection and improvement planning"],howToJoin:"Interested in helping run events? Volunteer with the Events Coordinator — all welcome!"}
   ],
   leaders:[
-    {role:"President",name:"[President Name]",bio:"Final year Marine Biology student with research interests in coastal ecology and student governance.",email:"president@umlc.co.za",photo:null},
+    {role:"President",name:"[President Name]",bio:"Final year Marine Biology student with research interests in coastal ecology and student governance.",email:"president@umlc.co.za",photo:"https://lh3.googleusercontent.com/rd-d/ALs6j_HFpCAX25vS4FlH9FSge-V4S8m1uUTpNq6XneXgZvliiyWrqBp8MqzYZU08EvX_LXU2WvsDcKUbpeHqO7GfJYdOy1svhFRxMAG5qfP6Df7LIgRR4y3LSkiSM-u4lMv8ag1I9Y2Pv-cnBnyW8F1km4jrDrFk0dpyEEFcQA4zptXn1F_4bdKzDq6Qh7ZpC2onfcrPg8QWkvqtLWLQvRqxXxN_JzooaFpntEccWOZtSB4ZlbQjcv5cLmEQXhg5eOtjj1eadhK6nGX-vll9I2-4qaaGmNt12MVVieNK0CwdY1RqB-DWMouXiroBf64SYYngblDIQ2K95TPPebexK2ldaEnJuG8hpY8iKzAgLgIOumv-tej_PdxrQF4OGH-wca2amObrEHTAczDWiSPugTWLe0L8LPE8qiwa7Aj9wF9UHrXRoH0pz1-zQx3gezTOdXoZy6VNVl0Wt7LvJg5oFM3If2tRJ9OkSVhQiF60r7KBpNiO0VOaJ7brCfXwhG0KIoBzCXyy1iW9U5_i4RgxcVhRnzISujhm77QYciEGPY4jrMfSzD_o5ny2gzXAmnF0JrqghFEp18hLOWoW6MX3P_FawrYccDJZQjSj8s5Gflb4ImFvNhspxPF3aQkNxjtzGCwQlYSoP6O7d-mvaNJ9sRHwh47AkqnrTiMy7SX7T51zyn0IA-k4-DjAgtXtaM8Ene2m2cANkv4Vq9qcQfRXftw1k_v_aHVs_kPuE4RbJLf449-tPqHoLNosGxHDk1nWnBUPtN0iPnOS-XCFKd-aPOQz_v2f_pvb0dJCPKoDnePiPM3x2GbY-FCTtJF9PSkzIlmzKycNHio-W3EEaLIEUbIh9yj2g5gQlmBR0cj-h9c2yZo348vg2aQVxOmrZZl_ZgGv53Y4dk3NNqjDmpVwhCnCsw4Vxqa1HLyzwM5ltw0ffzVj0Dwi3_9gT_upSeURdYJY3aWwhE8GvMUwR-7ZVa8IhsLEaZTxxsm4P9ARIj0wgzygiaLU9Dwbo7So8O9dFKtC5wI9twPO2L-1nzG5evPfxbtB1hVfvzXS4v3UgvJObA0f3lZEFk_rcZRpBg6Sq8rMwYoDX-1u=s1600"},
     {role:"Vice President",name:"[VP Name]",bio:"Supports presidential duties and oversees internal operations. Focuses on academic support and member engagement.",email:"vicepresident@umlc.co.za",photo:null},
     {role:"Secretary",name:"[Secretary Name]",bio:"Manages administrative records, meeting minutes, and official correspondence.",email:"secretary@umlc.co.za",photo:null},
     {role:"Treasurer",name:"[Treasurer Name]",bio:"Oversees financial management, budgeting, and funding applications.",email:"treasurer@umlc.co.za",photo:null},
@@ -909,6 +909,7 @@ function renderLeadersEdit(){
       <div class="mf"><label>Name</label><input type="text" id="le-name-${i}" value="${l.name}"></div>
       <div class="mf"><label>Bio</label><textarea id="le-bio-${i}" rows="2">${l.bio}</textarea></div>
       <div class="mf"><label>Email</label><input type="email" id="le-email-${i}" value="${l.email}"></div>
+      <div class="mf"><label>Photo URL (Google Drive)</label><input type="text" id="le-photo-${i}" value="${l.photo||''}" placeholder="https://lh3.googleusercontent.com/d/FILE_ID=w400-h400-c"><small style="color:var(--silver);">See GOOGLE_DRIVE_SETUP.md for instructions</small></div>
     </div>`).join('');
 }
 
@@ -918,7 +919,11 @@ function saveLeaders(){
     l.name=document.getElementById('le-name-'+i).value;
     l.bio=document.getElementById('le-bio-'+i).value;
     l.email=document.getElementById('le-email-'+i).value;
+<<<<<<< HEAD
     updateLeadershipMember(l);
+=======
+    l.photo=document.getElementById('le-photo-'+i).value.trim()||null;
+>>>>>>> d011f326d6e2f1c2ecf2dcd6a163a1a5295db32b
   });
   save();render();toast('Leadership updated!');
 }
@@ -1697,6 +1702,7 @@ switchTab = function(id, btn){
   _origSwitchTab(id, btn);
   if(id==='t-members') renderMembersAdmin();
   if(id==='t-donations') renderDonationsAdmin();
+  if(id==='t-leaders') renderLeadersEdit();
 };
 
 // ══════════════════════════════════════════════
