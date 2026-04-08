@@ -115,6 +115,17 @@ app.post('/api/events', (req, res) => {
   );
 });
 
+// DELETE event
+app.delete('/api/events/:id', (req, res) => {
+  db.run('DELETE FROM events WHERE id = ?', [req.params.id], function(err) {
+    if (err) {
+      res.status(500).json({ error: err.message });
+      return;
+    }
+    res.json({ message: 'Event deleted successfully' });
+  });
+});
+
 // GET all student voice issues
 app.get('/api/issues', (req, res) => {
   db.all('SELECT * FROM issues ORDER BY createdAt DESC', [], (err, rows) => {
@@ -158,6 +169,17 @@ app.put('/api/issues/:id', (req, res) => {
   );
 });
 
+// DELETE issue
+app.delete('/api/issues/:id', (req, res) => {
+  db.run('DELETE FROM issues WHERE id = ?', [req.params.id], function(err) {
+    if (err) {
+      res.status(500).json({ error: err.message });
+      return;
+    }
+    res.json({ message: 'Issue deleted successfully' });
+  });
+});
+
 // GET all contact inquiries
 app.get('/api/inquiries', (req, res) => {
   db.all('SELECT * FROM inquiries ORDER BY createdAt DESC', [], (err, rows) => {
@@ -183,6 +205,33 @@ app.post('/api/inquiries', (req, res) => {
       res.json({ id: this.lastID, message: 'Inquiry submitted successfully' });
     }
   );
+});
+
+// UPDATE inquiry status
+app.put('/api/inquiries/:id', (req, res) => {
+  const { status } = req.body;
+  db.run(
+    'UPDATE inquiries SET status = ? WHERE id = ?',
+    [status, req.params.id],
+    function(err) {
+      if (err) {
+        res.status(500).json({ error: err.message });
+        return;
+      }
+      res.json({ message: 'Inquiry updated successfully' });
+    }
+  );
+});
+
+// DELETE inquiry
+app.delete('/api/inquiries/:id', (req, res) => {
+  db.run('DELETE FROM inquiries WHERE id = ?', [req.params.id], function(err) {
+    if (err) {
+      res.status(500).json({ error: err.message });
+      return;
+    }
+    res.json({ message: 'Inquiry deleted successfully' });
+  });
 });
 
 // GET leadership

@@ -543,7 +543,12 @@ function updateIssueReply(i,val){
   save();render();
 }
 
-function removeIssue(i){if(confirm('Remove this issue?')){D.issues.splice(i,1);save();render();renderIssuesAdmin();toast('Removed.');}}
+function removeIssue(i){
+  if(confirm('Remove this issue?')){
+    if(D.issues[i].backendId) fetch(API_BASE_URL + '/issues/' + D.issues[i].backendId, { method: 'DELETE' }).catch(e=>console.error(e));
+    D.issues.splice(i,1);save();render();renderIssuesAdmin();toast('Removed.');
+  }
+}
 
 // ══════════════════════════════════════════════
 //  STUDENT VOICE / INBOX
@@ -570,21 +575,20 @@ async function handleVoice(e){
     
     if(response.ok){
       const result = await response.json();
-      // Also store locally for immediate display
-      D.inbox.push({id:'m'+(D.nextId++),name,email,category:cat,message:msg,time:new Date().toISOString(),read:false,reply:''});
-      save();updateInboxBadge();
       toast('Thank you '+name+'! Your message has been received and stored in our database.'+(email?' We may reply to '+email:''));
       document.getElementById('voice-form').reset();
       // Refresh from backend
       await fetchIssuesFromBackend();
+      renderIssuesPublic();
+      renderIssuesAdmin();
     }else{
       toast('Error submitting form. Please try again.','err');
     }
   }catch(error){
     console.error('Error submitting voice form:', error);
     // Fallback to local storage
-    D.inbox.push({id:'m'+(D.nextId++),name,email,category:cat,message:msg,time:new Date().toISOString(),read:false,reply:''});
-    save();updateInboxBadge();
+    D.issues.push({id:'i'+(D.nextId++),title:cat,desc:msg,status:'under-review',reply:'',source:'frontend',submitterName:name,submitterEmail:email});
+    save();renderIssuesPublic();renderIssuesAdmin();
     toast('Message saved locally (backend unavailable)');
     document.getElementById('voice-form').reset();
   }
@@ -617,13 +621,81 @@ function renderInbox(){
   }).join('');
 }
 
-function sendReply(i,id){const inp=document.getElementById('ri-'+id);if(!inp)return;const txt=inp.value.trim();if(!txt){toast('Enter a reply','err');return;}D.inbox[i].reply=txt;D.inbox[i].read=true;save();renderInbox();updateInboxBadge();toast(D.inbox[i].email?'Reply noted! Email: '+D.inbox[i].email:'Reply noted (no email provided).');}
+function sendReply(i,id){
+  const inp=document.getElementById('ri-'+id);if(!inp)return;const txt=inp.value.trim();if(!txt){toast('Enter a reply','err');return;}
+  D.inbox[i].reply=txt;D.inbox[i].read=true;
+  if(D.inbox[i].backendId) fetch(API_BASE_URL + '/inquiries/' + D.inbox[i].backendId, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({status: 'read'}) }).catch(e=>console.error(e));
+  save();renderInbox();updateInboxBadge();toast(D.inbox[i].email?'Reply noted! Email: '+D.inbox[i].email:'Reply noted (no email provided).');
+}
 
-function markRead(i){D.inbox[i].read=true;save();renderInbox();updateInboxBadge();}
+function markRead(i){
+  D.inbox[i].read=true;
+  if(D.inbox[i].backendId) fetch(API_BASE_URL + '/inquiries/' + D.inbox[i].backendId, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({status: 'read'}) }).catch(e=>console.error(e));
+  save();renderInbox();updateInboxBadge();
+}
 
-function promoteToIssue(i){const m=D.inbox[i];D.issues.push({id:'i'+(D.nextId++),title:m.category+': '+m.message.substring(0,55)+'...',desc:'Submitted by: '+m.name+(m.email?' ('+m.email+')':''),status:'under-review',reply:'',source:'inbox',submitterName:m.name,submitterEmail:m.email});D.inbox[i].read=true;save();render();renderIssuesAdmin();renderInbox();updateInboxBadge();toast('Added to Issues Board!');}
+function promoteToIssue(i){
+  const m=D.inbox[i];
+  fetch(API_BASE_URL + '/issues', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      title: m.category + ': ' + m.message.substring(0, 55) + '...',
+      description: 'Submitted by: ' + m.name + (m.email?' ('+m.email+')':''),
+      submitterName: m.name,
+      submitterEmail: m.email
+    })
+  }).then(r=>r.json()).then(res=>{
+    D.issues.push({...m, id:'i'+(D.nextId++), status:'under-review', backendId: res.id});
+    D.inbox[i].read=true;
+    if(m.backendId) fetch(API_BASE_URL + '/inquiries/' + m.backendId, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({status: 'read'}) }).catch(e=>console.error(e));
+    save();render();renderIssuesAdmin();renderInbox();updateInboxBadge();toast('Added to Issues Board!');
+  }).catch(e=>console.error(e));
+}
 
-function deleteMsg(i){if(confirm('Delete this message?')){D.inbox.splice(i,1);save();renderInbox();updateInboxBadge();toast('Deleted.');}}
+function deleteMsg(i){
+  if(confirm('Delete this message?')){
+    if(D.inbox[i].backendId) fetch(API_BASE_URL + '/inquiries/' + D.inbox[i].backendId, { method: 'DELETE' }).catch(e=>console.error(e));
+    D.inbox.splice(i,1);save();renderInbox();updateInboxBadge();toast('Deleted.');
+  }
+}
+
+function openContactModal() {
+  const overlay = document.getElementById('contactOverlay');
+  if(overlay) overlay.classList.add('show');
+}
+
+async function submitContactForm() {
+  const name = document.getElementById('contact-name').value.trim() || 'Anonymous';
+  const email = document.getElementById('contact-email').value.trim();
+  const subject = document.getElementById('contact-subject').value.trim() || 'Inquiry';
+  const msg = document.getElementById('contact-msg').value.trim();
+
+  if(!msg) { toast('Please enter a message', 'err'); return; }
+
+  try {
+    const res = await fetch(API_BASE_URL + '/inquiries', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, subject, message: msg })
+    });
+    if(res.ok) {
+      toast('Message sent successfully!');
+      document.getElementById('contact-name').value='';
+      document.getElementById('contact-email').value='';
+      document.getElementById('contact-subject').value='';
+      document.getElementById('contact-msg').value='';
+      document.getElementById('contactOverlay').classList.remove('show');
+      await fetchInquiriesFromBackend();
+      renderInbox(); updateInboxBadge();
+    } else {
+      toast('Error sending message', 'err');
+    }
+  } catch(e) {
+    console.error(e);
+    toast('Error sending message (backend unavailable)', 'err');
+  }
+}
 
 // ══════════════════════════════════════════════
 //  ADMIN CONTENT SAVES
@@ -864,7 +936,12 @@ function addEvent(){
 
 function renderEventsAdmin(){const el=document.getElementById('events-edit-list');if(!el)return;if(D.events.length===0){el.innerHTML='<p style="color:var(--ghost);font-size:0.85rem;">No events yet.</p>';return;}el.innerHTML=D.events.map((ev,i)=>`<div class="eitem"><div class="eitem-row"><div><strong style="font-size:0.88rem;">${ev.title}</strong><br><span style="font-size:0.75rem;color:var(--ghost);">${new Date(ev.date).toLocaleDateString()}</span></div><button class="del-btn" onclick="delEvent(${i})">Delete</button></div></div>`).join('');}
 
-function delEvent(i){if(confirm('Delete?')){D.events.splice(i,1);save();render();renderEventsAdmin();toast('Event deleted.');}}
+function delEvent(i){
+  if(confirm('Delete?')){
+    if(D.events[i].backendId) fetch(API_BASE_URL + '/events/' + D.events[i].backendId, { method: 'DELETE' }).catch(e=>console.error(e));
+    D.events.splice(i,1);save();render();renderEventsAdmin();toast('Event deleted.');
+  }
+}
 
 function renderTiersEdit(){
   const el=document.getElementById('tiers-edit-list');if(!el)return;
