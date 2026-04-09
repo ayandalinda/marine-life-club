@@ -1,153 +1,34 @@
+require('dotenv').config();
 const express = require('express');
-const sqlite3 = require('sqlite3').verbose();
+const { createClient } = require('@supabase/supabase-js');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const path = require('path');
 const jwt = require('jsonwebtoken');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-marine-key';
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_KEY;
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Initialize Supabase Client
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
 // Middleware
 app.use(cors());
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.json({ limit: '10mb' }));
+app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.static(path.join(__dirname)));
 
-// Database initialization
-const dbPath = path.join(__dirname, 'data.db');
-const db = new sqlite3.Database(dbPath, (err) => {
-  if (err) {
-    console.error('Error opening database:', err.message);
-  } else {
-    console.log('Connected to SQLite database');
-    initializeDatabase();
-  }
-});
-
-// Initialize database tables
-function initializeDatabase() {
-  db.serialize(() => {
-    // Events table
-    db.run(`
-      CREATE TABLE IF NOT EXISTS events (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        title TEXT NOT NULL,
-        description TEXT,
-        date TEXT,
-        location TEXT,
-        category TEXT,
-        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-
-    // Student Voice / Issues table
-    db.run(`
-      CREATE TABLE IF NOT EXISTS issues (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        title TEXT NOT NULL,
-        description TEXT,
-        status TEXT DEFAULT 'open',
-        reply TEXT,
-        submitterName TEXT,
-        submitterEmail TEXT,
-        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
-        resolvedAt DATETIME
-      )
-    `);
-
-    // Contact inquiries table
-    db.run(`
-      CREATE TABLE IF NOT EXISTS inquiries (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        email TEXT NOT NULL,
-        subject TEXT,
-        message TEXT,
-        status TEXT DEFAULT 'unread',
-        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-
-    // Leadership table
-    db.run(`
-      CREATE TABLE IF NOT EXISTS leadership (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        role TEXT NOT NULL,
-        name TEXT,
-        bio TEXT,
-        email TEXT,
-        photo TEXT,
-        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-
-    // Admins table
-    db.run(`
-      CREATE TABLE IF NOT EXISTS admins (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT UNIQUE NOT NULL,
-        password TEXT NOT NULL,
-        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-
-    // Members table
-    db.run(`
-      CREATE TABLE IF NOT EXISTS members (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        fname TEXT NOT NULL,
-        lname TEXT NOT NULL,
-        course TEXT NOT NULL,
-        institution TEXT NOT NULL,
-        year TEXT NOT NULL,
-        email TEXT UNIQUE NOT NULL,
-        phone TEXT,
-        password TEXT NOT NULL,
-        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-
-    console.log('Database tables initialized');
-
-    // Seed default leadership data if empty
-    db.get("SELECT COUNT(*) AS count FROM leadership", (err, row) => {
-      if (!err && row && row.count === 0) {
-        const stmt = db.prepare("INSERT INTO leadership (role, name, bio, email) VALUES (?, ?, ?, ?)");
-        stmt.run("President", "[President Name]", "Final year Marine Biology student with research interests in coastal ecology and student governance.", "president@umlc.co.za");
-        stmt.run("Vice President", "[VP Name]", "Supports presidential duties and oversees internal operations. Focuses on academic support and member engagement.", "vicepresident@umlc.co.za");
-        stmt.run("Secretary", "[Secretary Name]", "Manages administrative records, meeting minutes, and official correspondence.", "secretary@umlc.co.za");
-        stmt.run("Treasurer", "[Treasurer Name]", "Oversees financial management, budgeting, and funding applications.", "treasurer@umlc.co.za");
-        stmt.run("Media Officer", "[Media Officer Name]", "Manages social media, website content, and public relations. Documents all club activities.", "media@umlc.co.za");
-        stmt.run("Event Coordinator", "[Event Coordinator Name]", "Plans and coordinates all UMLC events — academic, social, and conservation. Ensures logistics run smoothly.", "events@umlc.co.za");
-        stmt.finalize();
-        console.log('Default leadership data seeded.');
-      }
-    });
-
-    // Seed default admin
-    db.get("SELECT COUNT(*) AS count FROM admins", (err, row) => {
-      if (!err && row && row.count === 0) {
-        db.run("INSERT INTO admins (username, password) VALUES (?, ?)", ['president', 'umlc2025']);
-        console.log('Default admin seeded.');
-      }
-    });
-
-  });
-}
-
 // ═══════════════════════════════════════════
-// API ENDPOINTS
+// AUTH MIDDLEWARE
 // ═══════════════════════════════════════════
-
-// Auth middleware
 function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
-  if (token == null) return res.sendStatus(401);
-
+  if (!token) return res.sendStatus(401);
   jwt.verify(token, JWT_SECRET, (err, user) => {
     if (err) return res.sendStatus(403);
     req.user = user;
@@ -155,278 +36,259 @@ function authenticateToken(req, res, next) {
   });
 }
 
-// POST login
-app.post('/api/login', (req, res) => {
-  const { username, password } = req.body;
-  if (!username || !password) {
-    return res.status(400).json({ error: 'Username and password required' });
-  }
+// ═══════════════════════════════════════════
+// API ENDPOINTS
+// ═══════════════════════════════════════════
 
-  db.get("SELECT * FROM admins WHERE username = ?", [username], (err, row) => {
-    if (err) return res.status(500).json({ error: err.message });
-    if (row && row.password === password) {
+// Admin Login
+app.post('/api/login', async (req, res) => {
+  const { username, password } = req.body;
+  if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
+
+  try {
+    const { data, error } = await supabase
+      .from('admins')
+      .select('*')
+      .eq('username', username)
+      .single();
+
+    if (error || !data) return res.status(401).json({ error: 'Invalid credentials' });
+    if (data.password === password) {
       const token = jwt.sign({ username }, JWT_SECRET, { expiresIn: '2h' });
       res.json({ token });
     } else {
       res.status(401).json({ error: 'Invalid credentials' });
     }
-  });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// POST member registration
-app.post('/api/register', (req, res) => {
+// Member Registration
+app.post('/api/register', async (req, res) => {
   const { fname, lname, course, institution, year, email, phone, password } = req.body;
   if (!fname || !lname || !course || !institution || !year || !email || !password) {
     return res.status(400).json({ error: 'All required fields must be supplied' });
   }
+  try {
+    const { data, error } = await supabase
+      .from('members')
+      .insert([{ fname, lname, course, institution, year, email, phone, password }])
+      .select('id')
+      .single();
 
-  const stmt = db.prepare(`INSERT INTO members (fname, lname, course, institution, year, email, phone, password) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`);
-  stmt.run([fname, lname, course, institution, year, email, phone, password], function(err) {
-    if (err) {
-      if (err.message.includes('UNIQUE constraint failed')) {
-        return res.status(400).json({ error: 'Email already exists' });
-      }
-      return res.status(500).json({ error: err.message });
+    if (error) {
+      if (error.code === '23505') return res.status(400).json({ error: 'Email already exists' });
+      return res.status(500).json({ error: error.message });
     }
-    res.json({ success: true, memberId: this.lastID });
-  });
+    res.json({ success: true, memberId: data.id });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// POST member login
-app.post('/api/member-login', (req, res) => {
+// Member Login
+app.post('/api/member-login', async (req, res) => {
   const { email, password } = req.body;
-  if (!email || !password) {
-    return res.status(400).json({ error: 'Email and password required' });
-  }
+  if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
 
-  db.get("SELECT id, fname, lname, course, institution, year, email, phone, createdAt FROM members WHERE email = ? AND password = ?", [email, password], (err, row) => {
-    if (err) return res.status(500).json({ error: err.message });
-    if (row) {
-      // Return member object
-      res.json({ success: true, member: row });
-    } else {
-      res.status(401).json({ error: 'Invalid credentials' });
-    }
-  });
+  try {
+    const { data, error } = await supabase
+      .from('members')
+      .select('*')
+      .eq('email', email)
+      .eq('password', password)
+      .single();
+
+    if (error || !data) return res.status(401).json({ error: 'Invalid credentials' });
+    res.json({ success: true, member: data });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // GET all members (Admin only)
-app.get('/api/members', authenticateToken, (req, res) => {
-  db.all('SELECT id, fname, lname, course, institution, year, email, phone, createdAt as joinDate FROM members ORDER BY createdAt DESC', [], (err, rows) => {
-    if (err) {
-      res.status(500).json({ error: err.message });
-      return;
-    }
-    res.json(rows);
-  });
+app.get('/api/members', authenticateToken, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('members')
+      .select('id, fname, lname, course, institution, year, email, phone, createdAt')
+      .order('createdAt', { ascending: false });
+
+    if (error) throw error;
+    res.json(data.map(m => ({ ...m, joinDate: m.createdAt })));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // DELETE a member (Admin only)
-app.delete('/api/members/:id', authenticateToken, (req, res) => {
-  db.run('DELETE FROM members WHERE id = ?', [req.params.id], function(err) {
-    if (err) {
-      res.status(500).json({ error: err.message });
-      return;
-    }
-    res.json({ success: true, changes: this.changes });
-  });
+app.delete('/api/members/:id', authenticateToken, async (req, res) => {
+  try {
+    const { error } = await supabase
+      .from('members')
+      .delete()
+      .eq('id', req.params.id);
+
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// GET all events
-app.get('/api/events', (req, res) => {
-  db.all('SELECT * FROM events ORDER BY date DESC', [], (err, rows) => {
-    if (err) {
-      res.status(500).json({ error: err.message });
-      return;
-    }
-    res.json(rows || []);
-  });
+// Events
+app.get('/api/events', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('events')
+      .select('*')
+      .order('date', { ascending: false });
+    if (error) throw error;
+    res.json(data || []);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// POST new event
-app.post('/api/events', authenticateToken, (req, res) => {
-  const { title, description, date, location, category } = req.body;
-  db.run(
-    'INSERT INTO events (title, description, date, location, category) VALUES (?, ?, ?, ?, ?)',
-    [title, description, date, location, category],
-    function(err) {
-      if (err) {
-        res.status(500).json({ error: err.message });
-        return;
-      }
-      res.json({ id: this.lastID, message: 'Event created successfully' });
-    }
-  );
+app.post('/api/events', authenticateToken, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('events')
+      .insert([req.body])
+      .select('id')
+      .single();
+    if (error) throw error;
+    res.json({ id: data.id, message: 'Event created successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// DELETE event
-app.delete('/api/events/:id', authenticateToken, (req, res) => {
-  db.run('DELETE FROM events WHERE id = ?', [req.params.id], function(err) {
-    if (err) {
-      res.status(500).json({ error: err.message });
-      return;
-    }
+app.delete('/api/events/:id', authenticateToken, async (req, res) => {
+  try {
+    const { error } = await supabase.from('events').delete().eq('id', req.params.id);
+    if (error) throw error;
     res.json({ message: 'Event deleted successfully' });
-  });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// GET all student voice issues
-app.get('/api/issues', (req, res) => {
-  db.all('SELECT * FROM issues ORDER BY createdAt DESC', [], (err, rows) => {
-    if (err) {
-      res.status(500).json({ error: err.message });
-      return;
-    }
-    res.json(rows || []);
-  });
+// Student Voice / Issues
+app.get('/api/issues', async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('issues').select('*').order('createdAt', { ascending: false });
+    if (error) throw error;
+    res.json(data || []);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// POST new issue
-app.post('/api/issues', (req, res) => {
-  const { title, description, submitterName, submitterEmail } = req.body;
-  db.run(
-    'INSERT INTO issues (title, description, submitterName, submitterEmail, status) VALUES (?, ?, ?, ?, ?)',
-    [title, description, submitterName, submitterEmail, 'under-review'],
-    function(err) {
-      if (err) {
-        res.status(500).json({ error: err.message });
-        return;
-      }
-      res.json({ id: this.lastID, message: 'Issue submitted successfully' });
-    }
-  );
+app.post('/api/issues', async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('issues').insert([{ ...req.body, status: 'under-review' }]).select('id').single();
+    if (error) throw error;
+    res.json({ id: data.id, message: 'Issue submitted successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// UPDATE issue status and reply
-app.put('/api/issues/:id', authenticateToken, (req, res) => {
-  const { status, reply } = req.body;
-  db.run(
-    'UPDATE issues SET status = ?, reply = ? WHERE id = ?',
-    [status, reply, req.params.id],
-    function(err) {
-      if (err) {
-        res.status(500).json({ error: err.message });
-        return;
-      }
-      res.json({ message: 'Issue updated successfully' });
-    }
-  );
+app.put('/api/issues/:id', authenticateToken, async (req, res) => {
+  try {
+    const { error } = await supabase.from('issues').update(req.body).eq('id', req.params.id);
+    if (error) throw error;
+    res.json({ message: 'Issue updated successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// DELETE issue
-app.delete('/api/issues/:id', authenticateToken, (req, res) => {
-  db.run('DELETE FROM issues WHERE id = ?', [req.params.id], function(err) {
-    if (err) {
-      res.status(500).json({ error: err.message });
-      return;
-    }
+app.delete('/api/issues/:id', authenticateToken, async (req, res) => {
+  try {
+    const { error } = await supabase.from('issues').delete().eq('id', req.params.id);
+    if (error) throw error;
     res.json({ message: 'Issue deleted successfully' });
-  });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// GET all contact inquiries
-app.get('/api/inquiries', (req, res) => {
-  db.all('SELECT * FROM inquiries ORDER BY createdAt DESC', [], (err, rows) => {
-    if (err) {
-      res.status(500).json({ error: err.message });
-      return;
-    }
-    res.json(rows || []);
-  });
+// Contact Inquiries
+app.get('/api/inquiries', authenticateToken, async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('inquiries').select('*').order('createdAt', { ascending: false });
+    if (error) throw error;
+    res.json(data || []);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// POST new inquiry
-app.post('/api/inquiries', (req, res) => {
-  const { name, email, subject, message } = req.body;
-  db.run(
-    'INSERT INTO inquiries (name, email, subject, message) VALUES (?, ?, ?, ?)',
-    [name, email, subject, message],
-    function(err) {
-      if (err) {
-        res.status(500).json({ error: err.message });
-        return;
-      }
-      res.json({ id: this.lastID, message: 'Inquiry submitted successfully' });
-    }
-  );
+app.post('/api/inquiries', async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('inquiries').insert([req.body]).select('id').single();
+    if (error) throw error;
+    res.json({ id: data.id, message: 'Inquiry submitted successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// UPDATE inquiry status
-app.put('/api/inquiries/:id', authenticateToken, (req, res) => {
-  const { status } = req.body;
-  db.run(
-    'UPDATE inquiries SET status = ? WHERE id = ?',
-    [status, req.params.id],
-    function(err) {
-      if (err) {
-        res.status(500).json({ error: err.message });
-        return;
-      }
-      res.json({ message: 'Inquiry updated successfully' });
-    }
-  );
+app.put('/api/inquiries/:id', authenticateToken, async (req, res) => {
+  try {
+    const { error } = await supabase.from('inquiries').update(req.body).eq('id', req.params.id);
+    if (error) throw error;
+    res.json({ message: 'Inquiry updated successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// DELETE inquiry
-app.delete('/api/inquiries/:id', authenticateToken, (req, res) => {
-  db.run('DELETE FROM inquiries WHERE id = ?', [req.params.id], function(err) {
-    if (err) {
-      res.status(500).json({ error: err.message });
-      return;
-    }
+app.delete('/api/inquiries/:id', authenticateToken, async (req, res) => {
+  try {
+    const { error } = await supabase.from('inquiries').delete().eq('id', req.params.id);
+    if (error) throw error;
     res.json({ message: 'Inquiry deleted successfully' });
-  });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// GET leadership
-app.get('/api/leadership', (req, res) => {
-  db.all('SELECT * FROM leadership ORDER BY id', [], (err, rows) => {
-    if (err) {
-      res.status(500).json({ error: err.message });
-      return;
-    }
-    res.json(rows || []);
-  });
+// Leadership
+app.get('/api/leadership', async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('leadership').select('*').order('id');
+    if (error) throw error;
+    res.json(data || []);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// UPDATE leadership
-app.post('/api/leadership', authenticateToken, (req, res) => {
+app.post('/api/leadership', authenticateToken, async (req, res) => {
   const { role, name, bio, email, photo } = req.body;
-  db.run(
-    'INSERT OR REPLACE INTO leadership (role, name, bio, email, photo) VALUES (?, ?, ?, ?, ?)',
-    [role, name, bio, email, photo],
-    function(err) {
-      if (err) {
-        res.status(500).json({ error: err.message });
-        return;
-      }
-      res.json({ message: 'Leadership updated successfully' });
-    }
-  );
+  try {
+    const { error } = await supabase
+      .from('leadership')
+      .upsert({ role, name, bio, email, photo }, { onConflict: 'role' });
+    if (error) throw error;
+    res.json({ message: 'Leadership updated successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Health check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'Backend is running', timestamp: new Date() });
+  res.json({ status: 'Backend is running (Supabase API Mode)', timestamp: new Date() });
 });
 
 // Start server
-if (require.main === module) {
-  app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-    console.log(`API endpoints available at http://localhost:${PORT}/api/`);
-  });
-}
-
-// Graceful shutdown
-process.on('SIGINT', () => {
-  db.close((err) => {
-    if (err) {
-      console.error(err.message);
-    }
-    console.log('Database connection closed');
-    process.exit(0);
-  });
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on http://localhost:${PORT}`);
 });
 
 module.exports = app;
