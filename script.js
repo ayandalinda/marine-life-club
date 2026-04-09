@@ -48,7 +48,7 @@ const DEFAULT = {
 };
 
 let D = JSON.parse(JSON.stringify(DEFAULT));
-let creds = {u:"admin",p:"marine2026"};
+let creds = {u:"president",p:"umlc2025"};
 let loggedIn = false;
 let loginAttempts = 0;
 let loginLocked = false;
@@ -717,7 +717,10 @@ function openAdmin(){
   console.log('🔐 Opening admin panel...');
   try{
     const overlay = document.getElementById('adminOverlay');
-    if(!overlay) throw new Error('adminOverlay element not found');
+    if(!overlay) {
+      window.location.href = 'admin.html';
+      return;
+    }
     overlay.classList.add('show');
     if(loggedIn) showPanel();
     console.log('✅ Admin panel opened');
@@ -909,7 +912,11 @@ function renderLeadersEdit(){
       <div class="mf"><label>Name</label><input type="text" id="le-name-${i}" value="${l.name}"></div>
       <div class="mf"><label>Bio</label><textarea id="le-bio-${i}" rows="2">${l.bio}</textarea></div>
       <div class="mf"><label>Email</label><input type="email" id="le-email-${i}" value="${l.email}"></div>
-      <div class="mf"><label>Photo URL (Google Drive)</label><input type="text" id="le-photo-${i}" value="${l.photo||''}" placeholder="https://lh3.googleusercontent.com/d/FILE_ID=w400-h400-c"><small style="color:var(--silver);">See GOOGLE_DRIVE_SETUP.md for instructions</small></div>
+      <div class="mf"><label>Photo Upload</label>
+        <button type="button" class="btn-outline" style="width:100%;margin-bottom:0.5rem;" onclick="document.getElementById('le-photo-file-${i}').click()">${l.photo?'Change Photo':'Upload Photo'}</button>
+        <input type="file" id="le-photo-file-${i}" accept="image/*" style="display:none;" onchange="handleAdminPhoto(event,${i})">
+        ${l.photo?`<div style="display:flex;align-items:center;gap:1rem;margin-top:0.5rem;"><img src="${l.photo}" style="width:40px;height:40px;object-fit:cover;border-radius:50%;"><a href="javascript:void(0)" onclick="clearAdminPhoto(${i})" style="color:var(--coral);font-size:0.85rem;">Remove</a></div>`:''}
+      </div>
     </div>`).join('');
 }
 
@@ -919,13 +926,33 @@ function saveLeaders(){
     l.name=document.getElementById('le-name-'+i).value;
     l.bio=document.getElementById('le-bio-'+i).value;
     l.email=document.getElementById('le-email-'+i).value;
-<<<<<<< HEAD
     updateLeadershipMember(l);
-=======
-    l.photo=document.getElementById('le-photo-'+i).value.trim()||null;
->>>>>>> d011f326d6e2f1c2ecf2dcd6a163a1a5295db32b
   });
   save();render();toast('Leadership updated!');
+}
+
+async function handleAdminPhoto(e,i){
+  const f=e.target.files[0];if(!f)return;
+  if(f.size>5*1024*1024){toast('Photo must be under 5MB','err');return;}
+  const reader = new FileReader();
+  reader.onload = async (ev) => {
+    D.leaders[i].photo = ev.target.result;
+    save();
+    renderLeadersEdit();
+    renderLeaders();
+    toast('Photo uploaded for ' + D.leaders[i].role + '!');
+    await updateLeadershipMember(D.leaders[i]);
+  };
+  reader.readAsDataURL(f);
+}
+
+async function clearAdminPhoto(i){
+  D.leaders[i].photo = null;
+  save();
+  renderLeadersEdit();
+  renderLeaders();
+  toast('Photo removed');
+  await updateLeadershipMember(D.leaders[i]);
 }
 
 function saveHero(){D.hero.tagline=document.getElementById('e-hero-tagline').value;D.hero.sub=document.getElementById('e-hero-sub').value;save();render();toast('Hero saved!');}

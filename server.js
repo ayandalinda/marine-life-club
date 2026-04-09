@@ -84,7 +84,41 @@ function initializeDatabase() {
       )
     `);
 
+    // Admins table
+    db.run(`
+      CREATE TABLE IF NOT EXISTS admins (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL,
+        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
     console.log('Database tables initialized');
+
+    // Seed default leadership data if empty
+    db.get("SELECT COUNT(*) AS count FROM leadership", (err, row) => {
+      if (!err && row && row.count === 0) {
+        const stmt = db.prepare("INSERT INTO leadership (role, name, bio, email) VALUES (?, ?, ?, ?)");
+        stmt.run("President", "[President Name]", "Final year Marine Biology student with research interests in coastal ecology and student governance.", "president@umlc.co.za");
+        stmt.run("Vice President", "[VP Name]", "Supports presidential duties and oversees internal operations. Focuses on academic support and member engagement.", "vicepresident@umlc.co.za");
+        stmt.run("Secretary", "[Secretary Name]", "Manages administrative records, meeting minutes, and official correspondence.", "secretary@umlc.co.za");
+        stmt.run("Treasurer", "[Treasurer Name]", "Oversees financial management, budgeting, and funding applications.", "treasurer@umlc.co.za");
+        stmt.run("Media Officer", "[Media Officer Name]", "Manages social media, website content, and public relations. Documents all club activities.", "media@umlc.co.za");
+        stmt.run("Event Coordinator", "[Event Coordinator Name]", "Plans and coordinates all UMLC events — academic, social, and conservation. Ensures logistics run smoothly.", "events@umlc.co.za");
+        stmt.finalize();
+        console.log('Default leadership data seeded.');
+      }
+    });
+
+    // Seed default admin
+    db.get("SELECT COUNT(*) AS count FROM admins", (err, row) => {
+      if (!err && row && row.count === 0) {
+        db.run("INSERT INTO admins (username, password) VALUES (?, ?)", ['president', 'umlc2025']);
+        console.log('Default admin seeded.');
+      }
+    });
+
   });
 }
 
@@ -108,12 +142,19 @@ function authenticateToken(req, res, next) {
 // POST login
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
-  if (username === 'admin' && password === 'marine2026') {
-    const token = jwt.sign({ username }, JWT_SECRET, { expiresIn: '2h' });
-    res.json({ token });
-  } else {
-    res.status(401).json({ error: 'Invalid credentials' });
+  if (!username || !password) {
+    return res.status(400).json({ error: 'Username and password required' });
   }
+
+  db.get("SELECT * FROM admins WHERE username = ?", [username], (err, row) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (row && row.password === password) {
+      const token = jwt.sign({ username }, JWT_SECRET, { expiresIn: '2h' });
+      res.json({ token });
+    } else {
+      res.status(401).json({ error: 'Invalid credentials' });
+    }
+  });
 });
 
 // GET all events
