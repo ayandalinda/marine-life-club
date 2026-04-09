@@ -1,12 +1,9 @@
 [build]
+  command = "npm run build"
+  functions = "netlify/functions"
   publish = "."
-  command = "echo 'Static site - no build required'"
 
 [[redirects]]
-  from = "/*"
-  to = "/index.html"
+  from = "/api/*"
+  to = "/.netlify/functions/api/:splat"
   status = 200
-
-[dev]
-  command = "npx http-server -p 8888"
-  port = 8888

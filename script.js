@@ -67,6 +67,28 @@ function getAuthHeaders() {
     ...(token ? { 'Authorization': 'Bearer ' + token } : {})
   };
 }
+// Alias for consistency across different versions of the code
+const authHeaders = getAuthHeaders;
+
+// UI Constants (Moved here to avoid Temporal Dead Zone errors)
+const SECTION_NAMES = {
+  home: 'Home/Hero',
+  about: 'About UMLC',
+  programmes: 'Programmes',
+  'student-voice': 'Student Voice',
+  events: 'Events',
+  partnerships: 'Partnerships',
+  leadership: 'Leadership'
+};
+
+const STATUS_MAP = {
+  'pending': { label: 'Pending', badge: 'badge-pending', bar: 'p-pending', steps: [false, false, false, false] },
+  'under-review': { label: 'Under Review', badge: 'badge-review', bar: 'p-review', steps: [true, false, false, false] },
+  'in-progress': { label: 'In Progress', badge: 'badge-progress', bar: 'p-progress', steps: [true, true, false, false] },
+  'resolved': { label: 'Resolved', badge: 'badge-resolved', bar: 'p-resolved', steps: [true, true, true, true] }
+};
+const STEPS = ['Received', 'Under Review', 'In Progress', 'Resolved'];
+let toastT;
 
 // ══════════════════════════════════════════════
 //  GOOGLE SHEETS BACKEND
@@ -455,13 +477,6 @@ function renderEvents(){
 // ══════════════════════════════════════════════
 //  ISSUES
 // ══════════════════════════════════════════════
-const STATUS_MAP={
-  'pending':{label:'Pending',badge:'badge-pending',bar:'p-pending',steps:[false,false,false,false]},
-  'under-review':{label:'Under Review',badge:'badge-review',bar:'p-review',steps:[true,false,false,false]},
-  'in-progress':{label:'In Progress',badge:'badge-progress',bar:'p-progress',steps:[true,true,false,false]},
-  'resolved':{label:'Resolved',badge:'badge-resolved',bar:'p-resolved',steps:[true,true,true,true]}
-};
-const STEPS=['Received','Under Review','In Progress','Resolved'];
 
 function renderIssuesPublic(){
   const el=document.getElementById('issues-list-public');if(!el)return;
@@ -673,9 +688,8 @@ function openContactModal() {
   if(overlay) overlay.classList.add('show');
 }
 
-function getAuthHeaders() {
-  const token = sessionStorage.getItem('adminToken');
-  return token ? { 'Authorization': 'Bearer ' + token } : {};
+function getContactHeaders() {
+  return { 'Content-Type': 'application/json' };
 }
 
 async function submitContactForm() {
@@ -1104,8 +1118,6 @@ function saveSEO(){
   save();applySEO();toast('SEO settings saved!');
 }
 
-const SECTION_NAMES={home:'Home/Hero',about:'About UMLC',programmes:'Programmes','student-voice':'Student Voice',events:'Events',partnerships:'Partnerships',leadership:'Leadership'};
-
 function renderSectionToggles(){
   const el=document.getElementById('section-toggles');if(!el)return;
   el.innerHTML=Object.keys(SECTION_NAMES).map(k=>`
@@ -1246,8 +1258,7 @@ function dl(content,filename){const a=document.createElement('a');a.href=URL.cre
 // ══════════════════════════════════════════════
 //  UI HELPERS
 // ══════════════════════════════════════════════
-let toastT;
-function toast(msg,type){const t=document.getElementById('toast');t.textContent=msg;t.style.borderLeftColor=type==='err'?'var(--coral)':'var(--biolum)';t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),3500);}
+function toast(msg,type){const t=document.getElementById('toast');if(!t)return;t.textContent=msg;t.style.borderLeftColor=type==='err'?'var(--coral)':'var(--biolum)';t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),3500);}
 
 function toggleMenu(){const mn=document.getElementById('mobileNav'),h=document.getElementById('ham');mn.classList.toggle('open');h.classList.toggle('open');h.setAttribute('aria-expanded',mn.classList.contains('open'));}
 
