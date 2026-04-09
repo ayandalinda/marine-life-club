@@ -94,6 +94,22 @@ function initializeDatabase() {
       )
     `);
 
+    // Members table
+    db.run(`
+      CREATE TABLE IF NOT EXISTS members (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        fname TEXT NOT NULL,
+        lname TEXT NOT NULL,
+        course TEXT NOT NULL,
+        institution TEXT NOT NULL,
+        year TEXT NOT NULL,
+        email TEXT UNIQUE NOT NULL,
+        phone TEXT,
+        password TEXT NOT NULL,
+        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
     console.log('Database tables initialized');
 
     // Seed default leadership data if empty
@@ -154,6 +170,65 @@ app.post('/api/login', (req, res) => {
     } else {
       res.status(401).json({ error: 'Invalid credentials' });
     }
+  });
+});
+
+// POST member registration
+app.post('/api/register', (req, res) => {
+  const { fname, lname, course, institution, year, email, phone, password } = req.body;
+  if (!fname || !lname || !course || !institution || !year || !email || !password) {
+    return res.status(400).json({ error: 'All required fields must be supplied' });
+  }
+
+  const stmt = db.prepare(`INSERT INTO members (fname, lname, course, institution, year, email, phone, password) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`);
+  stmt.run([fname, lname, course, institution, year, email, phone, password], function(err) {
+    if (err) {
+      if (err.message.includes('UNIQUE constraint failed')) {
+        return res.status(400).json({ error: 'Email already exists' });
+      }
+      return res.status(500).json({ error: err.message });
+    }
+    res.json({ success: true, memberId: this.lastID });
+  });
+});
+
+// POST member login
+app.post('/api/member-login', (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Email and password required' });
+  }
+
+  db.get("SELECT id, fname, lname, course, institution, year, email, phone, createdAt FROM members WHERE email = ? AND password = ?", [email, password], (err, row) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (row) {
+      // Return member object
+      res.json({ success: true, member: row });
+    } else {
+      res.status(401).json({ error: 'Invalid credentials' });
+    }
+  });
+});
+
+// GET all members (Admin only)
+app.get('/api/members', authenticateToken, (req, res) => {
+  db.all('SELECT id, fname, lname, course, institution, year, email, phone, createdAt as joinDate FROM members ORDER BY createdAt DESC', [], (err, rows) => {
+    if (err) {
+      res.status(500).json({ error: err.message });
+      return;
+    }
+    res.json(rows);
+  });
+});
+
+// DELETE a member (Admin only)
+app.delete('/api/members/:id', authenticateToken, (req, res) => {
+  db.run('DELETE FROM members WHERE id = ?', [req.params.id], function(err) {
+    if (err) {
+      res.status(500).json({ error: err.message });
+      return;
+    }
+    res.json({ success: true, changes: this.changes });
   });
 });
 

@@ -794,9 +794,21 @@ async function doLogin(){
   }
 }
 
-function showPanel(){
+async function fetchMembersFromBackend() {
+  try {
+    const response = await fetch(API_BASE_URL + '/members', { headers: authHeaders() });
+    if(!response.ok) throw new Error('Failed to fetch members');
+    D.members = await response.json();
+  } catch(e) {
+    console.error('Error fetching members:', e);
+    if (!D.members) D.members = [];
+  }
+}
+
+async function showPanel(){
   document.getElementById('login-view').style.display='none';
   document.getElementById('admin-view').style.display='block';
+  await fetchMembersFromBackend();
   fillAdminForms();
 }
 
@@ -1508,7 +1520,7 @@ document.getElementById('reg-year').addEventListener('change',function(){
   if(w) w.style.display=this.value==='Other'?'block':'none';
 });
 
-function doRegister(){
+async function doRegister(){
   const fname=document.getElementById('reg-fname').value.trim();
   const lname=document.getElementById('reg-lname').value.trim();
   const course=document.getElementById('reg-course').value.trim();
@@ -1526,44 +1538,70 @@ function doRegister(){
   }
   if(pass.length<8){ errEl.style.display='block'; errEl.textContent='Password must be at least 8 characters.'; return; }
   if(pass!==pass2){ errEl.style.display='block'; errEl.textContent='Passwords do not match.'; return; }
-  const existing=D.members&&D.members.find(m=>m.email===email);
-  if(existing){ errEl.style.display='block'; errEl.textContent='An account with this email already exists.'; return; }
 
-  if(!D.members) D.members=[];
-  const member = {
-    id:'mem'+(D.nextId++),
+  const payload = {
     fname, lname, course, institution,
     year: year==='Other'?(yearOther||year):year,
-    email, phone,
-    passHash: btoa(pass),
-    joinDate: new Date().toISOString(),
-    photo: null
+    email, phone, password: pass
   };
-  D.members.push(member);
-  save();
-  errEl.style.display='none';
-  currentMember = member;
-  toast('Welcome to UMLC, '+fname+'! Your account has been created.');
-  closeJoinModal();
-  updateMemberNavBtn();
+
+  try {
+    const res = await fetch(API_BASE_URL + '/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      errEl.style.display='block'; errEl.textContent = data.error || 'Registration failed';
+      return;
+    }
+    
+    errEl.style.display='none';
+    currentMember = payload;
+    sessionStorage.setItem('umlc_member', JSON.stringify(currentMember));
+    toast('Welcome to UMLC, '+fname+'! Your account has been created.');
+    closeJoinModal();
+    updateMemberNavBtn();
+  } catch (err) {
+    errEl.style.display='block'; errEl.textContent = 'Server error. Try again.';
+  }
 }
 
-function doMemberLogin(){
+async function doMemberLogin(){
   const email=document.getElementById('mem-email').value.trim().toLowerCase();
   const pass=document.getElementById('mem-pass').value;
   const errEl=document.getElementById('mem-login-err');
-  if(!D.members){errEl.style.display='block';return;}
-  const member=D.members.find(m=>m.email===email&&m.passHash===btoa(pass));
-  if(!member){errEl.style.display='block';return;}
-  errEl.style.display='none';
-  currentMember=member;
-  closeJoinModal();
-  toast('Welcome back, '+member.fname+'!');
-  updateMemberNavBtn();
+  
+  if(!email || !pass) { errEl.style.display='block'; errEl.textContent='Email and password required.'; return; }
+
+  try {
+    const res = await fetch(API_BASE_URL + '/member-login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({email, password: pass})
+    });
+    const data = await res.json();
+    
+    if (!res.ok || !data.success) {
+      errEl.style.display='block'; errEl.textContent = data.error || 'Invalid credentials.';
+      return;
+    }
+
+    errEl.style.display='none';
+    currentMember = data.member;
+    sessionStorage.setItem('umlc_member', JSON.stringify(currentMember));
+    closeJoinModal();
+    toast('Welcome back, '+currentMember.fname+'!');
+    updateMemberNavBtn();
+  } catch (err) {
+    errEl.style.display='block'; errEl.textContent = 'Server connection failed.';
+  }
 }
 
 function doMemberLogout(){
   currentMember=null;
+  sessionStorage.removeItem('umlc_member');
   document.getElementById('memberProfileOverlay').classList.remove('show');
   updateMemberNavBtn();
   toast('Logged out successfully.');
@@ -1685,9 +1723,20 @@ function renderMembersAdmin(){
   <div style="margin-top:0.75rem;font-size:0.78rem;color:var(--ghost);">${members.length} member${members.length!==1?'s':''} shown</div>`;
 }
 
-function deleteMember(id){
+async function deleteMember(id){
   if(confirm('Remove this member?')){
-    D.members=D.members.filter(m=>m.id!==id);save();renderMembersAdmin();toast('Member removed.');
+    try {
+      const res = await fetch(API_BASE_URL + '/members/' + id, {
+        method: 'DELETE',
+        headers: authHeaders()
+      });
+      if(!res.ok) throw new Error('Failed to delete');
+      D.members = D.members.filter(m=>m.id != id);
+      renderMembersAdmin();
+      toast('Member removed.');
+    } catch (err) {
+      toast('Error removing member.', 'err');
+    }
   }
 }
 
