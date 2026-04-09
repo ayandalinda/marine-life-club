@@ -17,7 +17,8 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname)));
 
 // Database initialization
-const db = new sqlite3.Database('./data.db', (err) => {
+const dbPath = path.join(__dirname, 'data.db');
+const db = new sqlite3.Database(dbPath, (err) => {
   if (err) {
     console.error('Error opening database:', err.message);
   } else {
@@ -294,10 +295,12 @@ app.get('/api/health', (req, res) => {
 });
 
 // Start server
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-  console.log(`API endpoints available at http://localhost:${PORT}/api/`);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`API endpoints available at http://localhost:${PORT}/api/`);
+  });
+}
 
 // Graceful shutdown
 process.on('SIGINT', () => {
@@ -309,3 +312,5 @@ process.on('SIGINT', () => {
     process.exit(0);
   });
 });
+
+module.exports = app;
