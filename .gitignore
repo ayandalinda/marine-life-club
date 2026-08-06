@@ -10,7 +10,6 @@ yarn-error.log
 
 # Database
 *.db
-!data.db
 *.sqlite
 *.sqlite3
 
