@@ -175,9 +175,95 @@ async function seedSiteContent() {
   console.log('✅ site_content seeded');
 }
 
+async function seedLeadership() {
+  const leaders = [
+    {
+      role: 'President',
+      name: 'Siphamandla Mthembu',
+      bio: 'Final year Marine Biology student passionate about estuarine ecology, shark conservation, and empowering student researchers across KwaZulu-Natal.',
+      email: 'president@umlc.co.za',
+      photo: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80',
+    },
+    {
+      role: 'Vice President',
+      name: 'Dr. Anika Pillay',
+      bio: 'Postgraduate marine ecologist focusing on coral reef resilience, ocean acidification, and coordinating university academic mentorship.',
+      email: 'vicepresident@umlc.co.za',
+      photo: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=600&q=80',
+    },
+    {
+      role: 'Secretary',
+      name: 'Thabo Dlamini',
+      bio: 'Third-year BSc Biological Sciences. Oversees member registration, governance, meeting agendas, and executive correspondence.',
+      email: 'secretary@umlc.co.za',
+      photo: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=600&q=80',
+    },
+    {
+      role: 'Treasurer',
+      name: 'Liam van der Merwe',
+      bio: 'Marine Sciences student with experience in non-profit financial administration, managing sponsorship bursaries, and field trip budgeting.',
+      email: 'treasurer@umlc.co.za',
+      photo: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=600&q=80',
+    },
+    {
+      role: 'Media Officer',
+      name: 'Zanele Khumalo',
+      bio: 'Underwater photographer, scientific communicator, and manager of UMLC social media outreach and conservation awareness campaigns.',
+      email: 'media@umlc.co.za',
+      photo: 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?auto=format&fit=crop&w=600&q=80',
+    },
+    {
+      role: 'Event Coordinator',
+      name: 'Keanu Moodley',
+      bio: 'Rescue diver and field enthusiast dedicated to curating impactful beach clean-ups, academic seminars, and coastal expeditions.',
+      email: 'events@umlc.co.za',
+      photo: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=600&q=80',
+    },
+  ];
+  for (const leader of leaders) {
+    await supabase.from('leadership').upsert(leader, { onConflict: 'role' });
+  }
+  console.log('✅ Leadership seeded');
+}
+
+async function seedEvents() {
+  const events = [
+    {
+      title: 'Durban Coastline Beach Clean-up & Microplastics Survey',
+      date: '2025-03-15',
+      location: 'uShaka Beach / Point Waterfront, Durban',
+      category: 'Conservation',
+      description: 'Join UMLC members and ocean volunteers in our monthly coastal clean-up and citizen-science microplastics density audit along the Durban Golden Mile.',
+    },
+    {
+      title: 'Marine Megafauna & Shark Conservation Seminar',
+      date: '2025-03-27',
+      location: 'UKZN Howard College, Life Sciences Auditorium',
+      category: 'Academic',
+      description: 'Distinguished guest seminar presented with KwaZulu-Natal Sharks Board and ORI researchers examining ragged-tooth shark telemetry along the South African eastern seaboard.',
+    },
+    {
+      title: 'Aliwal Shoal Scuba & Snorkel Research Excursion',
+      date: '2025-04-12',
+      location: 'Umkomaas / Aliwal Shoal Marine Protected Area',
+      category: 'Field Trip',
+      description: 'Hands-on reef biodiversity assessment in one of the top dive sites on Earth. Student transport and chartered dive boat subsidized by UMLC.',
+    },
+  ];
+  const { data: existing } = await supabase.from('events').select('id');
+  if (existing && existing.length > 0) {
+    console.log('↷ Events already seeded, skipping');
+    return;
+  }
+  await supabase.from('events').insert(events);
+  console.log('✅ Events seeded');
+}
+
 async function main() {
   await seedAdmin();
   await seedProgrammes();
+  await seedLeadership();
+  await seedEvents();
   await seedPartners();
   await seedTiers();
   await seedSiteContent();

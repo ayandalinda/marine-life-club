@@ -6,39 +6,120 @@ import { listTiers } from '../api/tiers';
 import { listLeadership } from '../api/leadership';
 import { listEvents } from '../api/events';
 import { listIssues } from '../api/issues';
+import {
+  DEFAULT_SITE_CONTENT,
+  DEFAULT_PROGRAMMES,
+  DEFAULT_LEADERS,
+  DEFAULT_PARTNERS,
+  DEFAULT_TIERS,
+  DEFAULT_EVENTS,
+} from '../lib/defaults';
 
 const SiteContentContext = createContext(null);
 
-const EMPTY_SITE_CONTENT = {
-  hero: {}, about: {}, contacts: {}, socials: {}, footerAddress: '', partnerIntro: '',
-  bankDetails: {}, seo: {}, sections: {}, settings: {},
-};
-
 export function SiteContentProvider({ children }) {
-  const [siteContent, setSiteContent] = useState(EMPTY_SITE_CONTENT);
-  const [programmes, setProgrammes] = useState([]);
-  const [partners, setPartners] = useState([]);
-  const [tiers, setTiers] = useState([]);
-  const [leaders, setLeaders] = useState([]);
-  const [events, setEvents] = useState([]);
+  const [siteContent, setSiteContent] = useState(DEFAULT_SITE_CONTENT);
+  const [programmes, setProgrammes] = useState(DEFAULT_PROGRAMMES);
+  const [partners, setPartners] = useState(DEFAULT_PARTNERS);
+  const [tiers, setTiers] = useState(DEFAULT_TIERS);
+  const [leaders, setLeaders] = useState(DEFAULT_LEADERS);
+  const [events, setEvents] = useState(DEFAULT_EVENTS);
   const [issues, setIssues] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const refetchSiteContent = useCallback(async () => setSiteContent(await getSiteContent()), []);
-  const refetchProgrammes = useCallback(async () => setProgrammes(await listProgrammes()), []);
-  const refetchPartners = useCallback(async () => setPartners(await listPartners()), []);
-  const refetchTiers = useCallback(async () => setTiers(await listTiers()), []);
-  const refetchLeaders = useCallback(async () => setLeaders(await listLeadership()), []);
-  const refetchEvents = useCallback(async () => setEvents(await listEvents()), []);
-  const refetchIssues = useCallback(async () => setIssues(await listIssues()), []);
+  const refetchSiteContent = useCallback(async () => {
+    try {
+      const data = await getSiteContent();
+      if (data && typeof data === 'object') {
+        setSiteContent((prev) => ({
+          ...prev,
+          ...data,
+          hero: { ...prev.hero, ...(data.hero || {}) },
+          about: { ...prev.about, ...(data.about || {}) },
+          contacts: { ...prev.contacts, ...(data.contacts || {}) },
+          socials: { ...prev.socials, ...(data.socials || {}) },
+          sections: { ...prev.sections, ...(data.sections || {}) },
+          settings: { ...prev.settings, ...(data.settings || {}) },
+        }));
+      }
+    } catch (err) {
+      console.warn('Using cached/default site content:', err.message);
+    }
+  }, []);
+
+  const refetchProgrammes = useCallback(async () => {
+    try {
+      const list = await listProgrammes();
+      if (Array.isArray(list) && list.length > 0) setProgrammes(list);
+    } catch (err) {
+      console.warn('Using default programmes:', err.message);
+    }
+  }, []);
+
+  const refetchPartners = useCallback(async () => {
+    try {
+      const list = await listPartners();
+      if (Array.isArray(list) && list.length > 0) setPartners(list);
+    } catch (err) {
+      console.warn('Using default partners:', err.message);
+    }
+  }, []);
+
+  const refetchTiers = useCallback(async () => {
+    try {
+      const list = await listTiers();
+      if (Array.isArray(list) && list.length > 0) setTiers(list);
+    } catch (err) {
+      console.warn('Using default tiers:', err.message);
+    }
+  }, []);
+
+  const refetchLeaders = useCallback(async () => {
+    try {
+      const list = await listLeadership();
+      if (Array.isArray(list) && list.length > 0) setLeaders(list);
+    } catch (err) {
+      console.warn('Using default leaders:', err.message);
+    }
+  }, []);
+
+  const refetchEvents = useCallback(async () => {
+    try {
+      const list = await listEvents();
+      if (Array.isArray(list)) setEvents(list);
+    } catch (err) {
+      console.warn('Using default events:', err.message);
+    }
+  }, []);
+
+  const refetchIssues = useCallback(async () => {
+    try {
+      const list = await listIssues();
+      if (Array.isArray(list)) setIssues(list);
+    } catch (err) {
+      console.warn('Using empty issues list:', err.message);
+    }
+  }, []);
 
   useEffect(() => {
     Promise.allSettled([
-      refetchSiteContent(), refetchProgrammes(), refetchPartners(),
-      refetchTiers(), refetchLeaders(), refetchEvents(), refetchIssues(),
+      refetchSiteContent(),
+      refetchProgrammes(),
+      refetchPartners(),
+      refetchTiers(),
+      refetchLeaders(),
+      refetchEvents(),
+      refetchIssues(),
     ]).finally(() => setLoading(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [
+    refetchSiteContent,
+    refetchProgrammes,
+    refetchPartners,
+    refetchTiers,
+    refetchLeaders,
+    refetchEvents,
+    refetchIssues,
+  ]);
 
   useEffect(() => {
     const settings = siteContent.settings || {};
@@ -59,17 +140,38 @@ export function SiteContentProvider({ children }) {
 
   const updateSiteContent = useCallback(async (patch) => {
     const updated = await apiUpdateSiteContent(patch);
-    setSiteContent(updated);
+    setSiteContent((prev) => ({
+      ...prev,
+      ...updated,
+      hero: { ...prev.hero, ...(updated?.hero || {}) },
+      about: { ...prev.about, ...(updated?.about || {}) },
+      contacts: { ...prev.contacts, ...(updated?.contacts || {}) },
+      socials: { ...prev.socials, ...(updated?.socials || {}) },
+      sections: { ...prev.sections, ...(updated?.sections || {}) },
+      settings: { ...prev.settings, ...(updated?.settings || {}) },
+    }));
     return updated;
   }, []);
 
   return (
     <SiteContentContext.Provider
       value={{
-        siteContent, programmes, partners, tiers, leaders, events, issues, loading,
+        siteContent,
+        programmes,
+        partners,
+        tiers,
+        leaders,
+        events,
+        issues,
+        loading,
         updateSiteContent,
-        refetchSiteContent, refetchProgrammes, refetchPartners,
-        refetchTiers, refetchLeaders, refetchEvents, refetchIssues,
+        refetchSiteContent,
+        refetchProgrammes,
+        refetchPartners,
+        refetchTiers,
+        refetchLeaders,
+        refetchEvents,
+        refetchIssues,
       }}
     >
       {children}

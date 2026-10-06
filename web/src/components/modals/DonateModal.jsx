@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Heart } from 'lucide-react';
 import Modal from './Modal';
 import { useSiteContent } from '../../contexts/SiteContentContext';
 import { useToast } from '../../contexts/ToastContext';
@@ -53,7 +54,18 @@ export default function DonateModal({ open, onClose }) {
   };
 
   return (
-    <Modal open={open} onClose={onClose} title="💛 Donate to UMLC" maxWidth={520} labelledBy="donate-title">
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+          <Heart size={18} style={{ color: 'var(--coral)', fill: 'rgba(255,107,71,0.2)' }} />
+          Donate to UMLC
+        </span>
+      }
+      maxWidth={520}
+      labelledBy="donate-title"
+    >
       <p style={{ color: 'var(--mist)', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
         Your donation directly supports UKZN Marine Life Club's academic programmes, conservation projects, and
         student events. Every contribution makes a difference.

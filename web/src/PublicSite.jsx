@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import Nav from './components/layout/Nav';
+import OceanTicker from './components/layout/OceanTicker';
 import Footer from './components/layout/Footer';
 import CookieBanner from './components/layout/CookieBanner';
 import ParticleBackground from './components/layout/ParticleBackground';
 import GoogleTranslateWidget from './components/layout/GoogleTranslateWidget';
 import Hero from './components/sections/Hero';
 import About from './components/sections/About';
+import SpeciesGuide from './components/sections/SpeciesGuide';
 import Programmes from './components/sections/Programmes';
 import StudentVoice from './components/sections/StudentVoice';
 import Events from './components/sections/Events';
@@ -38,7 +40,7 @@ function useRevealOnScroll() {
 
 export default function PublicSite() {
   const { siteContent } = useSiteContent();
-  const sections = siteContent.sections || {};
+  const sections = siteContent?.sections || {};
   const visible = (key) => sections[key] !== false;
 
   const [searchOpen, setSearchOpen] = useState(false);
@@ -72,9 +74,13 @@ export default function PublicSite() {
         onOpenJoin={() => setJoinOpen(true)}
         onOpenProfile={() => setProfileOpen(true)}
       />
+      <div style={{ paddingTop: 'var(--nav-h)' }}>
+        <OceanTicker />
+      </div>
       <div className="page">
         {visible('home') && <Hero onOpenJoin={() => setJoinOpen(true)} />}
         {visible('about') && <About />}
+        {visible('species') && <SpeciesGuide />}
         {visible('programmes') && <Programmes onOpenDetail={setActiveProgramme} />}
         {visible('student-voice') && <StudentVoice />}
         {visible('events') && <Events />}

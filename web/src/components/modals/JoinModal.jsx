@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { UserPlus } from 'lucide-react';
 import Modal from './Modal';
 import { useMemberAuth } from '../../contexts/MemberAuthContext';
 import { useToast } from '../../contexts/ToastContext';
@@ -132,7 +133,18 @@ export default function JoinModal({ open, onClose }) {
   };
 
   return (
-    <Modal open={open} onClose={handleClose} title="🐠 Join UMLC" maxWidth={560} labelledBy="join-modal-title">
+    <Modal
+      open={open}
+      onClose={handleClose}
+      title={
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+          <UserPlus size={18} style={{ color: 'var(--biolum)' }} />
+          Join UMLC
+        </span>
+      }
+      maxWidth={560}
+      labelledBy="join-modal-title"
+    >
       <div className="tabs" style={{ marginBottom: '1.5rem' }}>
         <button className={`tab-btn${tab === 'register' ? ' on' : ''}`} onClick={() => setTab('register')}>Register</button>
         <button className={`tab-btn${tab === 'login' ? ' on' : ''}`} onClick={() => setTab('login')}>Member Login</button>

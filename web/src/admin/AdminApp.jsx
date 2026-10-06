@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { Settings, ArrowLeft } from 'lucide-react';
 import logo from '../assets/logo.jpg';
 import { useAdminAuth } from '../contexts/AdminAuthContext';
 import AdminLogin from './AdminLogin';
@@ -14,11 +15,18 @@ export default function AdminApp() {
           <img className="logo-img" src={logo} alt="" />
           UMLC
         </Link>
-        <Link to="/" className="btn-outline">← Back to site</Link>
+        <Link to="/" className="btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+          <ArrowLeft size={14} /> Back to site
+        </Link>
       </div>
       <div style={{ maxWidth: 800, margin: '0 auto' }}>
         <div className="modal" style={{ position: 'static', maxHeight: 'none', width: '100%', transform: 'none' }}>
-          <div className="modal-head"><h2>⚙ Administration Panel</h2></div>
+          <div className="modal-head">
+            <h2 style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Settings size={20} style={{ color: 'var(--biolum)' }} />
+              Administration Panel
+            </h2>
+          </div>
           <div className="modal-body">
             {isAuthenticated ? <AdminShell /> : <AdminLogin />}
           </div>

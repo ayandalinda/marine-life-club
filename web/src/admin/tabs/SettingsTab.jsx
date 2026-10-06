@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
+import { Search, Lock, Zap, Eye, Database, FileText, Globe } from 'lucide-react';
 import { useSiteContent } from '../../contexts/SiteContentContext';
 import { useAdminAuth } from '../../contexts/AdminAuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { changeAdminPassword } from '../../api/auth';
 import { downloadSitemap, downloadBackup } from '../../lib/downloads';
-import { listProgrammes, updateProgramme } from '../../api/programmes';
-import { listPartners, upsertPartner } from '../../api/partners';
-import { listTiers, upsertTier } from '../../api/tiers';
+import { updateProgramme } from '../../api/programmes';
+import { upsertPartner } from '../../api/partners';
+import { upsertTier } from '../../api/tiers';
 
 const THEMES = [
   { id: 'ocean', label: 'Ocean', preview: 'linear-gradient(135deg,#020d18,#00f5c4)' },
@@ -149,7 +150,9 @@ export default function SettingsTab() {
       </div>
 
       <div className="settings-section">
-        <div className="settings-section-title">🔍 SEO &amp; Discoverability</div>
+        <div className="settings-section-title" style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+          <Search size={15} /> SEO &amp; Discoverability
+        </div>
         <div className="setting-row">
           <div className="setting-info"><strong>Search Engine Visibility</strong><small>Turn ON when your site goes live to allow Google/Bing to index it</small></div>
           <Toggle on={!!siteContent.seo?.enabled} onClick={() => updateSiteContent({ seo: { ...siteContent.seo, enabled: !siteContent.seo?.enabled } })} label="SEO visibility" />
@@ -167,13 +170,15 @@ export default function SettingsTab() {
       </div>
 
       <div className="settings-section">
-        <div className="settings-section-title">🔒 Security</div>
+        <div className="settings-section-title" style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+          <Lock size={15} /> Security
+        </div>
         <div className="setting-row">
           <div className="setting-info"><strong>SSL/TLS Certificate</strong><small>Enable HTTPS via your web host (e.g. Netlify, Vercel) — required for live sites.</small></div>
           <span className="setting-status">Manual Setup</span>
         </div>
         <div className="setting-row">
-          <div className="setting-info"><strong>SSL Badge on Footer</strong><small>Show 🔒 SSL Secured badge when SSL is active</small></div>
+          <div className="setting-info"><strong>SSL Badge on Footer</strong><small>Show SSL Secured badge when SSL is active</small></div>
           <Toggle on={!!settings.sslBadge} onClick={() => setSetting('sslBadge', !settings.sslBadge)} label="SSL badge" />
         </div>
         <div className="setting-row">
@@ -183,7 +188,9 @@ export default function SettingsTab() {
       </div>
 
       <div className="settings-section">
-        <div className="settings-section-title">⚡ Performance &amp; Mobile</div>
+        <div className="settings-section-title" style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+          <Zap size={15} /> Performance &amp; Mobile
+        </div>
         <div className="setting-row">
           <div className="setting-info"><strong>Smooth Scroll &amp; Animations</strong><small>Scroll animations and transitions enhance user experience</small></div>
           <Toggle on={settings.animations !== false} onClick={() => setSetting('animations', settings.animations === false)} label="Animations" />
@@ -195,7 +202,9 @@ export default function SettingsTab() {
       </div>
 
       <div className="settings-section">
-        <div className="settings-section-title">♿ Accessibility</div>
+        <div className="settings-section-title" style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+          <Eye size={15} /> Accessibility
+        </div>
         <div className="setting-row">
           <div className="setting-info"><strong>High Contrast Mode</strong><small>Boosts text contrast for low-vision users</small></div>
           <Toggle on={!!settings.highContrast} onClick={() => setSetting('highContrast', !settings.highContrast)} label="High contrast" />
@@ -203,7 +212,9 @@ export default function SettingsTab() {
       </div>
 
       <div className="settings-section">
-        <div className="settings-section-title">💾 Backups &amp; Data</div>
+        <div className="settings-section-title" style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+          <Database size={15} /> Backups &amp; Data
+        </div>
         <div className="setting-row">
           <div className="setting-info"><strong>Manual Backup</strong><small>Download a full backup of all your website data as a JSON file</small></div>
           <button className="save-btn" style={{ marginTop: 0 }} onClick={handleBackupDownload}>Download Backup</button>
@@ -218,7 +229,9 @@ export default function SettingsTab() {
       </div>
 
       <div className="settings-section">
-        <div className="settings-section-title">📜 Privacy &amp; Compliance (POPIA / GDPR)</div>
+        <div className="settings-section-title" style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+          <FileText size={15} /> Privacy &amp; Compliance (POPIA / GDPR)
+        </div>
         <div className="setting-row">
           <div className="setting-info"><strong>Cookie Consent Banner</strong><small>Notify users about data collection on first visit</small></div>
           <Toggle on={!!settings.cookieBanner} onClick={() => setSetting('cookieBanner', !settings.cookieBanner)} label="Cookie banner" />
@@ -235,7 +248,9 @@ export default function SettingsTab() {
       </div>
 
       <div className="settings-section">
-        <div className="settings-section-title">🌐 Language &amp; Translation</div>
+        <div className="settings-section-title" style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+          <Globe size={15} /> Language &amp; Translation
+        </div>
         <div className="setting-row">
           <div className="setting-info"><strong>Translate Website</strong><small>Translate all content using Google Translate.</small></div>
           <button className="save-btn" style={{ margin: 0, fontSize: '0.72rem', padding: '0.5rem 1rem' }} onClick={() => setTranslateOpen((o) => !o)}>

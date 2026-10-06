@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { X } from 'lucide-react';
 import { SEARCH_INDEX } from './searchIndex';
 
 export default function SearchOverlay({ open, onClose }) {
@@ -49,7 +50,11 @@ export default function SearchOverlay({ open, onClose }) {
             </div>
           ))}
         </div>
-        <div className="search-close"><button onClick={onClose}>✕ Close (Esc)</button></div>
+        <div className="search-close">
+          <button onClick={onClose} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+            <X size={15} /> Close (Esc)
+          </button>
+        </div>
       </div>
     </div>
   );

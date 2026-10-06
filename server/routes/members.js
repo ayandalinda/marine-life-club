@@ -53,6 +53,51 @@ router.post('/member-login', async (req, res) => {
   }
 });
 
+// Update Member Profile
+router.put('/members/:id', async (req, res) => {
+  const { fname, lname, course, institution, year, phone, newPassword } = req.body;
+  try {
+    const update = {};
+    if (fname !== undefined) update.fname = fname;
+    if (lname !== undefined) update.lname = lname;
+    if (course !== undefined) update.course = course;
+    if (institution !== undefined) update.institution = institution;
+    if (year !== undefined) update.year = year;
+    if (phone !== undefined) update.phone = phone;
+    if (newPassword) {
+      update.password = await bcrypt.hash(newPassword, 10);
+    }
+
+    const { data, error } = await supabase
+      .from('members')
+      .update(update)
+      .eq('id', req.params.id)
+      .select('id, fname, lname, course, institution, year, email, phone, createdAt')
+      .single();
+
+    if (error) throw error;
+    res.json({ success: true, member: data });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET member's RSVPs
+router.get('/members/:email/rsvps', async (req, res) => {
+  try {
+    const email = req.params.email;
+    const { data, error } = await supabase
+      .from('event_rsvps')
+      .select('*')
+      .eq('memberEmail', email)
+      .order('createdAt', { ascending: false });
+    if (error) throw error;
+    res.json(data || []);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET all members (Admin only)
 router.get('/members', authenticateToken, async (req, res) => {
   try {

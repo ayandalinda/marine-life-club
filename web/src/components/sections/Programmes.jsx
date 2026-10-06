@@ -1,4 +1,5 @@
 import { useSiteContent } from '../../contexts/SiteContentContext';
+import { ProgramIcon } from '../common/ProgramIcon';
 
 export default function Programmes({ onOpenDetail }) {
   const { programmes } = useSiteContent();
@@ -13,7 +14,9 @@ export default function Programmes({ onOpenDetail }) {
         {programmes.map((p) => (
           <div className="prog-item" key={p.id} onClick={() => onOpenDetail(p)}>
             <span className="prog-num">{p.num}</span>
-            <div className="prog-icon">{p.icon}</div>
+            <div className="prog-icon">
+              <ProgramIcon icon={p.icon} size={28} />
+            </div>
             <h3>{p.title}</h3>
             <p>{p.summary}</p>
             <div className="prog-learn-more">Learn more</div>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSiteContent } from '../../contexts/SiteContentContext';
 import { useToast } from '../../contexts/ToastContext';
 import { updateProgramme } from '../../api/programmes';
@@ -9,6 +9,13 @@ function HeroEditor() {
   const [tagline, setTagline] = useState(siteContent.hero?.tagline || '');
   const [sub, setSub] = useState(siteContent.hero?.sub || '');
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (siteContent.hero) {
+      setTagline(siteContent.hero.tagline || '');
+      setSub(siteContent.hero.sub || '');
+    }
+  }, [siteContent.hero]);
 
   const save = async () => {
     setSaving(true);
@@ -41,6 +48,19 @@ function AboutEditor() {
     presidentMessage: siteContent.about?.presidentMessage || '',
   });
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (siteContent.about) {
+      setAbout({
+        intro: siteContent.about.intro || '',
+        mission: siteContent.about.mission || '',
+        vision: siteContent.about.vision || '',
+        values: siteContent.about.values || '',
+        presidentMessage: siteContent.about.presidentMessage || '',
+      });
+    }
+  }, [siteContent.about]);
+
   const set = (key) => (e) => setAbout((a) => ({ ...a, [key]: e.target.value }));
 
   const save = async () => {
@@ -69,24 +89,47 @@ function AboutEditor() {
 function ProgrammesEditor() {
   const { programmes, refetchProgrammes } = useSiteContent();
   const { showToast } = useToast();
-  const [drafts, setDrafts] = useState(() =>
-    Object.fromEntries(programmes.map((p) => [p.id, { ...p, activitiesText: (p.activities || []).join('\n') }])),
-  );
+  const [drafts, setDrafts] = useState({});
   const [saving, setSaving] = useState(false);
 
-  const setField = (id, key) => (e) => setDrafts((d) => ({ ...d, [id]: { ...d[id], [key]: e.target.value } }));
+  useEffect(() => {
+    if (Array.isArray(programmes) && programmes.length > 0) {
+      setDrafts((prev) => {
+        const next = { ...prev };
+        for (const p of programmes) {
+          if (!next[p.id]) {
+            next[p.id] = { ...p, activitiesText: (p.activities || []).join('\n') };
+          }
+        }
+        return next;
+      });
+    }
+  }, [programmes]);
+
+  const setField = (id, key) => (e) => setDrafts((d) => ({ ...d, [id]: { ...(d[id] || {}), [key]: e.target.value } }));
 
   const save = async () => {
     setSaving(true);
     try {
       await Promise.all(
-        Object.values(drafts).map((p) =>
-          updateProgramme(p.id, {
-            num: p.num, icon: p.icon, title: p.title, tagline: p.tagline, summary: p.summary,
-            description: p.description, howToJoin: p.howToJoin,
-            activities: p.activitiesText.split('\n').map((s) => s.trim()).filter(Boolean),
-          }),
-        ),
+        programmes.map((prog) => {
+          const d = drafts[prog.id] || prog;
+          const activities = (d.activitiesText !== undefined ? d.activitiesText : (d.activities || []).join('\n'))
+            .split('\n')
+            .map((s) => s.trim())
+            .filter(Boolean);
+
+          return updateProgramme(prog.id, {
+            num: d.num || prog.num,
+            icon: d.icon || prog.icon,
+            title: d.title || prog.title,
+            tagline: d.tagline || prog.tagline,
+            summary: d.summary || prog.summary,
+            description: d.description || prog.description,
+            howToJoin: d.howToJoin || prog.howToJoin,
+            activities,
+          });
+        }),
       );
       await refetchProgrammes();
       showToast('Programmes saved.');
@@ -100,7 +143,7 @@ function ProgrammesEditor() {
       <h4>Programmes</h4>
       <div>
         {programmes.map((p) => {
-          const d = drafts[p.id] || {};
+          const d = drafts[p.id] || { ...p, activitiesText: (p.activities || []).join('\n') };
           return (
             <div className="eitem" key={p.id}>
               <strong>{p.num} — {p.title}</strong>
@@ -126,6 +169,11 @@ function PartnershipsFooterEditor() {
   const [partnerIntro, setPartnerIntro] = useState(siteContent.partnerIntro || '');
   const [footerAddress, setFooterAddress] = useState((siteContent.footerAddress || '').replace(/<br\s*\/?>/gi, '\n'));
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (siteContent.partnerIntro !== undefined) setPartnerIntro(siteContent.partnerIntro || '');
+    if (siteContent.footerAddress !== undefined) setFooterAddress((siteContent.footerAddress || '').replace(/<br\s*\/?>/gi, '\n'));
+  }, [siteContent.partnerIntro, siteContent.footerAddress]);
 
   const save = async () => {
     setSaving(true);
@@ -160,6 +208,18 @@ function SocialsEditor() {
     youtube: siteContent.socials?.youtube || '',
   });
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (siteContent.socials) {
+      setSocials({
+        instagram: siteContent.socials.instagram || '',
+        tiktok: siteContent.socials.tiktok || '',
+        facebook: siteContent.socials.facebook || '',
+        youtube: siteContent.socials.youtube || '',
+      });
+    }
+  }, [siteContent.socials]);
+
   const set = (key) => (e) => setSocials((s) => ({ ...s, [key]: e.target.value }));
 
   const save = async () => {

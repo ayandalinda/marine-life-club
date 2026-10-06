@@ -1,3 +1,4 @@
+import { User } from 'lucide-react';
 import { useSiteContent } from '../../contexts/SiteContentContext';
 
 export default function Leadership() {
@@ -17,7 +18,9 @@ export default function Leadership() {
                 <img src={l.photo} alt={l.name} />
               ) : (
                 <div className="photo-placeholder">
-                  <div className="avatar-icon">👤</div>
+                  <div className="avatar-icon">
+                    <User size={30} style={{ color: 'var(--mist)' }} />
+                  </div>
                   <span>No Photo</span>
                 </div>
               )}

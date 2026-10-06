@@ -1,3 +1,4 @@
+import { Target, Eye, Anchor } from 'lucide-react';
 import { useSiteContent } from '../../contexts/SiteContentContext';
 
 export default function About() {
@@ -14,13 +15,24 @@ export default function About() {
       </div>
       <div className="pillars">
         <div className="pillar reveal reveal-delay-1">
-          <div className="pillar-icon">🎯</div><h3>Mission</h3><p>{about.mission}</p>
+          <div className="pillar-icon">
+            <Target size={28} style={{ color: 'var(--biolum)' }} />
+          </div>
+          <h3>Mission</h3>
+          <p>{about.mission}</p>
         </div>
         <div className="pillar reveal reveal-delay-2">
-          <div className="pillar-icon">👁️</div><h3>Vision</h3><p>{about.vision}</p>
+          <div className="pillar-icon">
+            <Eye size={28} style={{ color: 'var(--biolum)' }} />
+          </div>
+          <h3>Vision</h3>
+          <p>{about.vision}</p>
         </div>
         <div className="pillar reveal reveal-delay-3">
-          <div className="pillar-icon">⚓</div><h3>Core Values</h3>
+          <div className="pillar-icon">
+            <Anchor size={28} style={{ color: 'var(--biolum)' }} />
+          </div>
+          <h3>Core Values</h3>
           {/* about.values is admin-authored rich text (contains <strong>/<br>), not visitor-submitted */}
           <p dangerouslySetInnerHTML={{ __html: about.values || '' }} />
         </div>

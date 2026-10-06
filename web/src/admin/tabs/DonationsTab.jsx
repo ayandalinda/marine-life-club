@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Settings, Check } from 'lucide-react';
 import { listDonations, setDonationVerified, deleteDonation } from '../../api/donations';
 import { useSiteContent } from '../../contexts/SiteContentContext';
 import { useToast } from '../../contexts/ToastContext';
@@ -29,8 +30,9 @@ function BankDetailsForm() {
 
   return (
     <>
-      <div style={{ fontSize: '0.8rem', color: 'var(--biolum)', cursor: 'pointer' }} onClick={() => setOpen((o) => !o)}>
-        ⚙ Bank Details Settings
+      <div style={{ fontSize: '0.8rem', color: 'var(--biolum)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }} onClick={() => setOpen((o) => !o)}>
+        <Settings size={13} />
+        <span>Bank Details Settings</span>
       </div>
       {open && (
         <div style={{ background: 'var(--deep)', border: '1px solid rgba(0,245,196,0.15)', borderRadius: 6, padding: '1.25rem', margin: '1.25rem 0' }}>
@@ -103,7 +105,15 @@ export default function DonationsTab() {
             <div className="eitem-row">
               <strong>{d.name} — R{Number(d.amount).toLocaleString()}</strong>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <button className="btn-sm" onClick={() => toggleVerify(d)}>{d.verified ? '✓ Verified' : 'Mark Verified'}</button>
+                <button className="btn-sm" onClick={() => toggleVerify(d)}>
+                  {d.verified ? (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                      <Check size={12} /> Verified
+                    </span>
+                  ) : (
+                    'Mark Verified'
+                  )}
+                </button>
                 <button className="del-btn" onClick={() => remove(d)}>Remove</button>
               </div>
             </div>

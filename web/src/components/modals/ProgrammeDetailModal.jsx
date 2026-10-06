@@ -1,3 +1,6 @@
+import { X } from 'lucide-react';
+import { ProgramIcon } from '../common/ProgramIcon';
+
 export default function ProgrammeDetailModal({ programme, onClose }) {
   if (!programme) return null;
 
@@ -13,10 +16,14 @@ export default function ProgrammeDetailModal({ programme, onClose }) {
     >
       <div className="prog-modal">
         <div className="prog-modal-head">
-          <div className="prog-modal-icon">{programme.icon}</div>
+          <div className="prog-modal-icon">
+            <ProgramIcon icon={programme.icon} size={32} />
+          </div>
           <h2 className="prog-modal-title" id="prog-modal-title-el">{programme.title}</h2>
           <p className="prog-modal-tagline">{programme.tagline}</p>
-          <button className="prog-modal-close" onClick={onClose} aria-label="Close">&times;</button>
+          <button className="prog-modal-close" onClick={onClose} aria-label="Close">
+            <X size={18} />
+          </button>
         </div>
         <div className="prog-modal-body">
           <div className="prog-detail-section">
