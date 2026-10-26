@@ -1,0 +1,12 @@
+{
+  "watch": [
+    "server"
+  ],
+  "ignore": [
+    "server/data/**",
+    "web/**",
+    "*.log",
+    "node_modules/**"
+  ],
+  "ext": "js,mjs,cjs,json"
+}

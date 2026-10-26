@@ -175,57 +175,6 @@ async function seedSiteContent() {
   console.log('✅ site_content seeded');
 }
 
-async function seedLeadership() {
-  const leaders = [
-    {
-      role: 'President',
-      name: 'Siphamandla Mthembu',
-      bio: 'Final year Marine Biology student passionate about estuarine ecology, shark conservation, and empowering student researchers across KwaZulu-Natal.',
-      email: 'president@umlc.co.za',
-      photo: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80',
-    },
-    {
-      role: 'Vice President',
-      name: 'Dr. Anika Pillay',
-      bio: 'Postgraduate marine ecologist focusing on coral reef resilience, ocean acidification, and coordinating university academic mentorship.',
-      email: 'vicepresident@umlc.co.za',
-      photo: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=600&q=80',
-    },
-    {
-      role: 'Secretary',
-      name: 'Thabo Dlamini',
-      bio: 'Third-year BSc Biological Sciences. Oversees member registration, governance, meeting agendas, and executive correspondence.',
-      email: 'secretary@umlc.co.za',
-      photo: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=600&q=80',
-    },
-    {
-      role: 'Treasurer',
-      name: 'Liam van der Merwe',
-      bio: 'Marine Sciences student with experience in non-profit financial administration, managing sponsorship bursaries, and field trip budgeting.',
-      email: 'treasurer@umlc.co.za',
-      photo: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=600&q=80',
-    },
-    {
-      role: 'Media Officer',
-      name: 'Zanele Khumalo',
-      bio: 'Underwater photographer, scientific communicator, and manager of UMLC social media outreach and conservation awareness campaigns.',
-      email: 'media@umlc.co.za',
-      photo: 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?auto=format&fit=crop&w=600&q=80',
-    },
-    {
-      role: 'Event Coordinator',
-      name: 'Keanu Moodley',
-      bio: 'Rescue diver and field enthusiast dedicated to curating impactful beach clean-ups, academic seminars, and coastal expeditions.',
-      email: 'events@umlc.co.za',
-      photo: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=600&q=80',
-    },
-  ];
-  for (const leader of leaders) {
-    await supabase.from('leadership').upsert(leader, { onConflict: 'role' });
-  }
-  console.log('✅ Leadership seeded');
-}
-
 async function seedEvents() {
   const events = [
     {
@@ -259,10 +208,75 @@ async function seedEvents() {
   console.log('✅ Events seeded');
 }
 
+async function seedLeadership() {
+  const leadership = [
+    {
+      role: 'President',
+      name: 'Thembinkosi Cebekhulu',
+      bio: 'Final year Marine Biology student passionate about estuarine ecology, shark conservation, and empowering student researchers across KwaZulu-Natal.',
+      email: 'president@umlc.co.za',
+      photo: '',
+    },
+    { role: 'Vice President', name: '', bio: '', email: '', photo: '' },
+    { role: 'Secretary', name: '', bio: '', email: '', photo: '' },
+    { role: 'Treasurer', name: '', bio: '', email: '', photo: '' },
+    { role: 'Media Officer', name: '', bio: '', email: '', photo: '' },
+    { role: 'Event Coordinator', name: '', bio: '', email: '', photo: '' },
+  ];
+  const { error } = await supabase.from('leadership').upsert(leadership, { onConflict: 'role' });
+  if (error) throw error;
+  console.log('✅ Leadership seeded');
+}
+
+async function seedMembers() {
+  const password = await bcrypt.hash('umlc2025', 10);
+  const members = [
+    {
+      fname: 'Sipho',
+      lname: 'Ndlovu',
+      course: 'BSc Marine Biology',
+      institution: 'UKZN Westville Campus',
+      year: '3rd Year',
+      email: 'sndlovu@stu.ukzn.ac.za',
+      phone: '+27 82 555 1234',
+      password,
+    },
+    {
+      fname: 'Priya',
+      lname: 'Naidoo',
+      course: 'BSc Honours Marine Science',
+      institution: 'UKZN Howard College',
+      year: 'Postgraduate',
+      email: 'pnaidoo@stu.ukzn.ac.za',
+      phone: '+27 83 444 5678',
+      password,
+    },
+    {
+      fname: 'Cameron',
+      lname: 'Marais',
+      course: 'BSc Biological Sciences (Marine)',
+      institution: 'UKZN Westville Campus',
+      year: '2nd Year',
+      email: 'cmarais@stu.ukzn.ac.za',
+      phone: '+27 71 333 9876',
+      password,
+    },
+  ];
+  const { data: existing } = await supabase.from('members').select('id');
+  if (existing && existing.length > 0) {
+    console.log('↷ Members already seeded, skipping');
+    return;
+  }
+  const { error } = await supabase.from('members').upsert(members, { onConflict: 'email' });
+  if (error) throw error;
+  console.log('✅ Sample members seeded');
+}
+
 async function main() {
   await seedAdmin();
-  await seedProgrammes();
+  await seedMembers();
   await seedLeadership();
+  await seedProgrammes();
   await seedEvents();
   await seedPartners();
   await seedTiers();
