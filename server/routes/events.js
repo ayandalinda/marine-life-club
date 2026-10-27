@@ -91,7 +91,7 @@ router.post('/:id/rsvp', async (req, res) => {
 });
 
 // GET all RSVPs for an event (or all RSVPs if query param all=true)
-router.get('/:id/rsvps', async (req, res) => {
+router.get('/:id/rsvps', authenticateToken, async (req, res) => {
   try {
     const eventId = Number(req.params.id);
     const { data, error } = await supabase
