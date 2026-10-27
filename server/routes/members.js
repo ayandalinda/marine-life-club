@@ -24,7 +24,8 @@ router.post('/register', async (req, res) => {
       if (error.code === '23505') return res.status(400).json({ error: 'Email already exists' });
       return res.status(500).json({ error: error.message });
     }
-    res.json({ success: true, member: data });
+    const token = jwt.sign({ role: 'member', memberId: Number(data.id) }, JWT_SECRET, { expiresIn: '2h' });
+    res.json({ success: true, member: data, token });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
