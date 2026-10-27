@@ -19,7 +19,7 @@ const siteContentRoutes = require('./routes/siteContent');
 
 const app = express();
 
-app.use(cors());
+app.use(cors({ origin: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim()) : false }));
 app.use(bodyParser.json({ limit: '10mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
 
