@@ -24,7 +24,8 @@ export function MemberAuthProvider({ children }) {
   }, []);
 
   const register = useCallback(async (data) => {
-    const { member: m } = await registerMember(data);
+    const { member: m, token } = await registerMember(data);
+    localStorage.setItem(TOKEN_KEY, token);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(m));
     setMember(m);
     return m;
