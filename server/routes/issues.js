@@ -6,7 +6,7 @@ const router = express.Router();
 
 router.get('/', async (req, res) => {
   try {
-    const { data, error } = await supabase.from('issues').select('*').order('createdAt', { ascending: false });
+    const { data, error } = await supabase.from('issues').select('id, title, description, status, reply, createdAt, resolvedAt').order('createdAt', { ascending: false });
     if (error) throw error;
     res.json(data || []);
   } catch (err) {
