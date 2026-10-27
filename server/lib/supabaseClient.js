@@ -1,5 +1,5 @@
 const { createClient } = require('@supabase/supabase-js');
-const localAdapter = require('./localStore');
+const production = process.env.NODE_ENV === 'production' || Boolean(process.env.VERCEL);
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SERVICE_ROLE || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY;
@@ -16,11 +16,13 @@ if (isSupabaseConfigured) {
     console.log('🔗 Connected to Supabase Cloud Database');
   } catch (err) {
     console.warn('⚠️ Failed to initialize Supabase client, falling back to local database:', err.message);
-    client = localAdapter;
+    if (production) throw err;
+    client = require('./localStore');
   }
 } else {
+  if (production) throw new Error('Supabase configuration is required in production');
   console.log('📁 Using local database adapter (data stored in server/data/db.json). Full CRUD enabled.');
-  client = localAdapter;
+  client = require('./localStore');
 }
 
 module.exports = client;
