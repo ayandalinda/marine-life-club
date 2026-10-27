@@ -1,7 +1,8 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const supabase = require('../lib/supabaseClient');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, authenticateMember, JWT_SECRET } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -47,14 +48,16 @@ router.post('/member-login', async (req, res) => {
     if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
 
     const { password: _pw, ...member } = data;
-    res.json({ success: true, member });
+    const token = jwt.sign({ role: 'member', memberId: Number(data.id) }, JWT_SECRET, { expiresIn: '2h' });
+    res.json({ success: true, member, token });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
 // Update Member Profile
-router.put('/members/:id', async (req, res) => {
+router.put('/members/:id', authenticateMember, async (req, res) => {
+  if (Number(req.params.id) !== req.user.memberId) return res.sendStatus(403);
   const { fname, lname, course, institution, year, phone, newPassword } = req.body;
   try {
     const update = {};
@@ -83,7 +86,9 @@ router.put('/members/:id', async (req, res) => {
 });
 
 // GET member's RSVPs
-router.get('/members/:email/rsvps', async (req, res) => {
+router.get('/members/:email/rsvps', authenticateMember, async (req, res) => {
+  const { data: account, error: accountError } = await supabase.from('members').select('email').eq('id', req.user.memberId).single();
+  if (accountError || !account || account.email.toLowerCase() !== req.params.email.toLowerCase()) return res.sendStatus(403);
   try {
     const email = req.params.email;
     const { data, error } = await supabase
