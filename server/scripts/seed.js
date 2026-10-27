@@ -14,12 +14,13 @@ const bcrypt = require('bcryptjs');
 const supabase = require('../lib/supabaseClient');
 
 async function seedAdmin() {
-  const password = await bcrypt.hash('umlc2025', 10);
+  if (!process.env.INITIAL_ADMIN_PASSWORD || process.env.INITIAL_ADMIN_PASSWORD.length < 12) throw new Error('INITIAL_ADMIN_PASSWORD is required and must contain at least 12 characters');
+  const password = await bcrypt.hash(process.env.INITIAL_ADMIN_PASSWORD, 10);
   const { error } = await supabase
     .from('admins')
     .upsert({ username: 'president', password }, { onConflict: 'username' });
   if (error) throw error;
-  console.log('✅ Admin seeded (username: president, password: umlc2025 — change this after first login)');
+  console.log('Admin seeded');
 }
 
 async function seedProgrammes() {
@@ -229,6 +230,7 @@ async function seedLeadership() {
 }
 
 async function seedMembers() {
+  if (process.env.NODE_ENV === 'production' || process.env.VERCEL) return;
   const password = await bcrypt.hash('umlc2025', 10);
   const members = [
     {
