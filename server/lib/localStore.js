@@ -6,15 +6,9 @@ const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTI
 const DATA_DIR = isServerless ? path.join(os.tmpdir(), 'umlc-data') : path.join(__dirname, '..', 'data');
 const DB_FILE = path.join(DATA_DIR, 'db.json');
 
+if (isServerless) throw new Error('Local JSON database is not supported on serverless deployments');
 const INITIAL_DATA = {
-  admins: [
-    {
-      id: 1,
-      username: 'president',
-      password: '$2a$10$LmQT.LzvB2y1hFO0wL8/TeT1TAOW6Sk/G.1Of2PI6Wix/cs3ZRIQK', // umlc2025
-      createdAt: new Date().toISOString(),
-    },
-  ],
+  admins: [],
   members: [
     {
       id: 1,
