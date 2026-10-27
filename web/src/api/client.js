@@ -7,17 +7,17 @@ class ApiError extends Error {
   }
 }
 
-function authHeaders() {
-  const token = localStorage.getItem('umlc_admin_token');
+function authHeaders(member = false) {
+  const token = localStorage.getItem(member ? 'umlc_member_token' : 'umlc_admin_token');
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-export async function request(path, { method = 'GET', body, auth = false } = {}) {
+export async function request(path, { method = 'GET', body, auth = false, memberAuth = false } = {}) {
   const res = await fetch(BASE + path, {
     method,
     headers: {
       'Content-Type': 'application/json',
-      ...(auth ? authHeaders() : {}),
+      ...(auth || memberAuth ? authHeaders(memberAuth) : {}),
     },
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
